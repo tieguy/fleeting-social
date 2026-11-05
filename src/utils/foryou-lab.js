@@ -13,12 +13,37 @@ export const PER_AUTHOR_CAP = 2;
 // account outscores a hundred likes on a large one.
 export const FEED_MIN_LIKES = 20;
 
-// The saved Bluesky feeds the lab reads. Other saved feeds are skipped.
-export const LAB_FEEDS = new Set([
-  'at://did:plc:kmqa6ybu75bsrh2a7ccavy6g/app.bsky.feed.generator/aaaeenrjnifc4', // Housing Abundance
-  'at://did:plc:lrzkd5exmxqrblbruvjieofj/app.bsky.feed.generator/MLBlend', // AI/ML Feed: Blend
-  'at://did:plc:ktdlmdqpbyzbvtxrkwz5pvp2/app.bsky.feed.generator/aaab6tnm5ipfm', // San Francisco
+// The saved Bluesky feeds the lab reads, by AT-URI. Other saved feeds are
+// skipped. `strangers` says whether the feeds rule may pick posts by authors
+// the user does not follow; from the San Francisco feed, judged 0 of 8 up
+// across runs on 2026-10-23 and 2026-11-05, it may not.
+export const LAB_FEEDS = new Map([
+  [
+    'at://did:plc:kmqa6ybu75bsrh2a7ccavy6g/app.bsky.feed.generator/aaaeenrjnifc4',
+    { name: 'Housing Abundance', strangers: true },
+  ],
+  [
+    'at://did:plc:lrzkd5exmxqrblbruvjieofj/app.bsky.feed.generator/MLBlend',
+    { name: 'AI/ML Feed: Blend', strangers: true },
+  ],
+  [
+    'at://did:plc:ktdlmdqpbyzbvtxrkwz5pvp2/app.bsky.feed.generator/aaab6tnm5ipfm',
+    { name: 'San Francisco', strangers: false },
+  ],
 ]);
+
+// A list with this title, on either network, names accounts whose every post
+// is shown: high-signal organizations such as a publication the user reads
+// in full. Matched without regard to case or surrounding spaces.
+export const ALWAYS_LIST_TITLE = 'Always show';
+export const ALWAYS_LIMIT = 40;
+
+export function isAlwaysList(list) {
+  return (
+    !list?._feed &&
+    list?.title?.trim().toLowerCase() === ALWAYS_LIST_TITLE.toLowerCase()
+  );
+}
 
 export const TOPICS = {
   'open source':
@@ -142,7 +167,7 @@ export function buildPool(
 ) {
   const pool = new Map();
   const quotes = [];
-  for (const { item, origin, instance } of entries) {
+  for (const { item, origin, instance, strangers } of entries) {
     if (!item) continue;
     let status = item.reblog || item;
     // A post in a language the user does not read stands in for its quoted
@@ -189,11 +214,13 @@ export function buildPool(
         boostedBy: new Set(),
         quotedBy: new Set(),
         inHome: false,
+        strangerFeed: false,
       };
       pool.set(key, candidate);
     }
     candidate.origins.add(viaQuote ? `${origin} (quoted)` : origin);
     if (viaQuote) continue;
+    if (strangers) candidate.strangerFeed = true;
     if (origin === 'home' && !item.reblog) candidate.inHome = true;
     if (item.reblog && origin === 'home') {
       candidate.boostedBy.add(authorKey(instance, item.account));
@@ -328,11 +355,11 @@ export const RULES = [
   {
     id: 'feeds',
     name: 'Topic feeds, relative engagement',
-    note: `Posts from your saved topic feeds by authors you do not follow, at least ${FEED_MIN_LIKES} likes`,
+    note: `Posts from your saved topic feeds by authors you do not follow, at least ${FEED_MIN_LIKES} likes; not from feeds closed to strangers`,
     score: (f, c) =>
       !f.followed &&
       (c.status.favouritesCount || 0) >= FEED_MIN_LIKES &&
-      [...c.origins].some((o) => o.startsWith('feed:'))
+      c.strangerFeed
         ? f.relative || 0
         : null,
   },
@@ -345,6 +372,14 @@ export const RULES = [
       f.topics.length ? f.topics.length + (f.relative || 0) / 1000 : null,
   },
   {
+    id: 'always',
+    name: `"${ALWAYS_LIST_TITLE}" list`,
+    note: `Every post by members of a list titled "${ALWAYS_LIST_TITLE}", newest first`,
+    limit: ALWAYS_LIMIT,
+    perAuthorCap: Infinity,
+    score: (f, c) => (c.origins.has('always') ? c.time : null),
+  },
+  {
     id: 'random',
     followsOnly: true,
     name: 'Random (baseline)',
@@ -353,8 +388,14 @@ export const RULES = [
   },
 ];
 
-// Top picks for one rule, at most PER_AUTHOR_CAP per author.
-export function pickForRule(rule, scored, { seed, limit = PICKS_PER_RULE }) {
+// Top picks for one rule, at most PER_AUTHOR_CAP per author unless the rule
+// sets its own `limit` and `perAuthorCap`.
+export function pickForRule(
+  rule,
+  scored,
+  { seed, limit = rule.limit ?? PICKS_PER_RULE },
+) {
+  const perAuthorCap = rule.perAuthorCap ?? PER_AUTHOR_CAP;
   const ranked = scored
     .filter(({ features }) => !rule.followsOnly || features.followed)
     .map(({ candidate, features }) => ({
@@ -368,7 +409,7 @@ export function pickForRule(rule, scored, { seed, limit = PICKS_PER_RULE }) {
   for (const { candidate } of ranked) {
     if (picks.length >= limit) break;
     const n = perAuthor.get(candidate.author) || 0;
-    if (n >= PER_AUTHOR_CAP) continue;
+    if (n >= perAuthorCap) continue;
     perAuthor.set(candidate.author, n + 1);
     picks.push(candidate.key);
   }

@@ -12,6 +12,7 @@ import { api } from '../utils/api';
 import { getOtherNetworkAccounts } from '../utils/bluesky';
 import { idToAtUri } from '../utils/bluesky/convert';
 import {
+  isAlwaysList,
   LAB_FEEDS,
   WINDOW_MS,
   affinityFromActivity,
@@ -28,7 +29,10 @@ import useTitle from '../utils/useTitle';
 // Experiment page, reached only by typing its URL. Its strings are plain
 // text, not lingui macros, so they need no catalog entries.
 
-const HOME_PAGES = 30;
+// A Bluesky home page of 40 covered about two minutes on 2026-11-05 (30
+// pages, 1 hour). Mastodon servers keep 800 home posts, so its walk ends
+// sooner by itself.
+const HOME_PAGES = 100;
 const FEED_PAGES = 4;
 const ACTIVITY_PAGES = 3;
 const PROFILE_CONCURRENCY = 6;
@@ -233,15 +237,37 @@ async function loadSource({ masto, instance }, cutoff, log) {
     : 0;
 
   let lists = [];
+  let alwaysList = null;
   try {
-    lists = (await masto.v1.lists.list()).filter(
-      (l) => l._feed && LAB_FEEDS.has(idToAtUri(l.id)),
-    );
+    const all = await masto.v1.lists.list();
+    lists = all.filter((l) => l._feed && LAB_FEEDS.has(idToAtUri(l.id)));
+    alwaysList = all.find(isAlwaysList) || null;
   } catch (e) {
     console.error(e);
   }
+  let always = null;
+  if (alwaysList) {
+    log(`${instance}: reading list "${alwaysList.title}"`);
+    try {
+      const items = await collect(
+        masto.v1.timelines.list
+          .$select(alwaysList.id)
+          .list({ limit: 40 })
+          .values(),
+        { pages: FEED_PAGES, cutoff },
+      );
+      always = { count: items.length };
+      for (const item of items) {
+        entries.push({ item, origin: 'always', instance });
+      }
+    } catch (e) {
+      console.error(e);
+      always = { count: 0, failed: true };
+    }
+  }
   const feeds = [];
   for (const list of lists) {
+    const { strangers } = LAB_FEEDS.get(idToAtUri(list.id));
     log(`${instance}: reading feed "${list.title}"`);
     try {
       const items = await collect(
@@ -250,7 +276,12 @@ async function loadSource({ masto, instance }, cutoff, log) {
       );
       feeds.push({ title: list.title, count: items.length });
       for (const item of items) {
-        entries.push({ item, origin: `feed: ${list.title}`, instance });
+        entries.push({
+          item,
+          origin: `feed: ${list.title}`,
+          instance,
+          strangers,
+        });
       }
     } catch (e) {
       console.error(e);
@@ -291,6 +322,7 @@ async function loadSource({ masto, instance }, cutoff, log) {
     homeCount: home.length,
     homeHours,
     homeWalk,
+    always,
     feeds,
     own: own.map((status) => ({ instance, status })),
     likes: likes.map((status) => ({ instance, status })),
@@ -415,6 +447,7 @@ function ForYouLab() {
                 homeCount,
                 homeHours,
                 homeWalk,
+                always,
                 feeds,
                 own,
                 likes,
@@ -424,6 +457,7 @@ function ForYouLab() {
                 homeHours,
                 homePages: homeWalk.pages,
                 homeStop: homeWalk.stop,
+                always,
                 feeds,
                 activity: own.length + likes.length,
               }),
@@ -579,7 +613,12 @@ function ForYouLab() {
                             · {f.title} {f.failed ? '(failed)' : f.count}
                           </span>
                         ))}{' '}
-                        · {s.activity} of your posts and likes
+                        · {s.activity} of your posts and likes ·{' '}
+                        {s.always
+                          ? s.always.failed
+                            ? '"Always show" list failed'
+                            : `"Always show" list ${s.always.count}`
+                          : 'no "Always show" list'}
                       </li>
                     ),
                   )}

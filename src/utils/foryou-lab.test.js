@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildPool, isReadable } from './foryou-lab';
+import {
+  buildPool,
+  isAlwaysList,
+  isReadable,
+  pickForRule,
+  RULES,
+} from './foryou-lab';
 
 const post = (content, language = null) => ({ content, language });
 
@@ -105,5 +111,68 @@ describe('buildPool language fallback', () => {
       opts,
     );
     expect(pool).toEqual([]);
+  });
+});
+
+describe('feeds and the "Always show" list', () => {
+  const now = Date.parse('2026-11-05T12:00:00Z');
+  const opts = { cutoff: now - 24 * 36e5 };
+  const status = (id, author, extra = {}) => ({
+    id,
+    content: '<p>Some English text</p>',
+    language: 'en',
+    account: { id: author, acct: author },
+    createdAt: new Date(now - 36e5).toISOString(),
+    favouritesCount: 50,
+    ...extra,
+  });
+  const rule = (id) => RULES.find((r) => r.id === id);
+  const scoredOf = (pool, followed = false) =>
+    pool.map((candidate) => ({
+      candidate,
+      features: { followed, relative: 1 },
+    }));
+
+  it('matches the list title without regard to case or spaces', () => {
+    expect(isAlwaysList({ title: ' always SHOW ' })).toBe(true);
+    expect(isAlwaysList({ title: 'Always show', _feed: true })).toBe(false);
+    expect(isAlwaysList({ title: 'Always' })).toBe(false);
+  });
+
+  it('lets the feeds rule pick strangers only from open feeds', () => {
+    const pool = buildPool(
+      [
+        {
+          item: status('a', 'x'),
+          origin: 'feed: Housing',
+          instance: 'i',
+          strangers: true,
+        },
+        {
+          item: status('b', 'y'),
+          origin: 'feed: San Francisco',
+          instance: 'i',
+          strangers: false,
+        },
+      ],
+      opts,
+    );
+    const { picks } = pickForRule(rule('feeds'), scoredOf(pool), { seed: 1 });
+    expect(picks).toEqual(['i/a']);
+  });
+
+  it('shows every list post, past the per-author cap', () => {
+    const pool = buildPool(
+      ['1', '2', '3', '4'].map((id) => ({
+        item: status(id, 'pdr'),
+        origin: 'always',
+        instance: 'i',
+      })),
+      opts,
+    );
+    const { picks } = pickForRule(rule('always'), scoredOf(pool, true), {
+      seed: 1,
+    });
+    expect(picks).toHaveLength(4);
   });
 });
