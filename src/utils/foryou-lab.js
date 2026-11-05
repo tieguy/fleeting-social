@@ -97,7 +97,7 @@ export function mutableText(status, depth = 0) {
 
 // Builds one candidate per original post from timeline items, which may be
 // boost wrappers. Keeps posts created after the cutoff, not by the user, not
-// direct, and not replies into someone else's thread (self-threads stay).
+// direct, and not replies (a self-thread is represented by its first post).
 // Drops muted and blocked authors and boosters, including those on Bluesky
 // mute and block lists, posts that match a Mastodon home filter, and posts
 // on either network that hold a Bluesky muted word.
@@ -129,12 +129,9 @@ export function buildPool(
       if (time === null || time < cutoff) continue;
       if (selfKeys.has(authorKey(instance, status.account))) continue;
       if (status.visibility === 'direct') continue;
-      if (
-        status.inReplyToAccountId &&
-        status.inReplyToAccountId !== status.account?.id
-      ) {
-        continue;
-      }
+      // Replies make no sense out of context, and that includes the later
+      // posts of a self-thread. The thread's first post stands for it.
+      if (status.inReplyToId || status.inReplyToAccountId) continue;
       const text = [status.spoilerText, plainText(status.content)]
         .filter(Boolean)
         .join('\n');
