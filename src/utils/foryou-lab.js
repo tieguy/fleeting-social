@@ -81,6 +81,13 @@ export function hasMutedWord(text, mutedWords, now = Date.now()) {
 
 // Languages the user reads, as ISO 639-1 codes
 export const READABLE_LANGUAGES = new Set(['en', 'es']);
+// Servers whose posts pass the language check: photo communities, where the
+// picture is the point and the caption does not matter.
+export const LANGUAGE_EXEMPT_SERVERS = new Set(['mstdn.tokyocameraclub.com']);
+
+function serverOf(account) {
+  return account?.acct?.split('@')[1]?.toLowerCase() || null;
+}
 
 // False when a post is written in a language the user does not read. The
 // language the author's client declared is trusted when present; the text is
@@ -88,6 +95,7 @@ export const READABLE_LANGUAGES = new Set(['en', 'es']);
 // declared as English. A post with no declared language and Latin text passes.
 // Only the post's own text counts, not a quoted post.
 export function isReadable(status, languages = READABLE_LANGUAGES) {
+  if (LANGUAGE_EXEMPT_SERVERS.has(serverOf(status?.account))) return true;
   const lang = status?.language?.toLowerCase().split(/[-_]/)[0];
   if (lang && !languages.has(lang)) return false;
   const text = [status?.spoilerText, plainText(status?.content)]
@@ -122,7 +130,9 @@ export function mutableText(status, depth = 0) {
 // Drops muted and blocked authors and boosters, including those on Bluesky
 // mute and block lists, posts that match a Mastodon home filter, and posts
 // on either network that hold a Bluesky muted word, and posts in a
-// language the user does not read (see isReadable).
+// language the user does not read (see isReadable), except that such a post
+// is replaced by its quoted post when that one is readable. The quoted post
+// is not credited as in home, boosted, or quoted by the foreign post.
 // `boostedBy` counts accounts in the home timeline that boosted the post;
 // `quotedBy` counts home-timeline authors whose posts quote it. `inHome` is
 // set when the post itself, not a boost of it, is in the home timeline.
@@ -134,7 +144,18 @@ export function buildPool(
   const quotes = [];
   for (const { item, origin, instance } of entries) {
     if (!item) continue;
-    const status = item.reblog || item;
+    let status = item.reblog || item;
+    // A post in a language the user does not read stands in for its quoted
+    // post when that one is readable; the quoting post's time still counts.
+    const time = timeOf(status);
+    let viaQuote = false;
+    if (!isReadable(status)) {
+      const quoted = status.quote?.quotedStatus;
+      if (!quoted?.id || !isReadable(quoted)) continue;
+      if (isHiddenAuthor(status.account)) continue;
+      status = quoted;
+      viaQuote = true;
+    }
     if (isHiddenAuthor(status.account) || isHiddenAuthor(item.account)) {
       continue;
     }
@@ -147,7 +168,6 @@ export function buildPool(
     const key = `${instance}/${status.id}`;
     let candidate = pool.get(key);
     if (!candidate) {
-      const time = timeOf(status);
       if (time === null || time < cutoff) continue;
       if (selfKeys.has(authorKey(instance, status.account))) continue;
       if (status.visibility === 'direct') continue;
@@ -158,7 +178,6 @@ export function buildPool(
         .filter(Boolean)
         .join('\n');
       if (hasMutedWord(mutableText(status), mutedWords)) continue;
-      if (!isReadable(status)) continue;
       candidate = {
         key,
         instance,
@@ -173,7 +192,8 @@ export function buildPool(
       };
       pool.set(key, candidate);
     }
-    candidate.origins.add(origin);
+    candidate.origins.add(viaQuote ? `${origin} (quoted)` : origin);
+    if (viaQuote) continue;
     if (origin === 'home' && !item.reblog) candidate.inHome = true;
     if (item.reblog && origin === 'home') {
       candidate.boostedBy.add(authorKey(instance, item.account));
