@@ -16,6 +16,7 @@ import {
   didFromAtUri,
   feedItemToStatus,
   idToAtUri,
+  mutedWordText,
   notificationToMasto,
   postToStatus,
   profileToAccount,
@@ -308,14 +309,13 @@ export function createBlueskyClient({
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
-  // Bluesky applies muted words client-side; stamp Mastodon-style
+  // Bluesky applies muted words client-side, against the post text, tags,
+  // link card, image alt text, and the same parts of a quoted post; stamp Mastodon-style
   // `filtered` results so phanpy's existing filter UI handles them
   function applyMutedWords(status, words) {
     const target = status?.reblog || status;
     if (!target || !words?.length) return status;
-    const text = `${target.text || ''} ${(target.tags || [])
-      .map((t) => t.name)
-      .join(' ')}`;
+    const text = mutedWordText(target);
     const matches = [];
     for (const word of words) {
       if (word.expiresAt && Date.parse(word.expiresAt) < Date.now()) continue;

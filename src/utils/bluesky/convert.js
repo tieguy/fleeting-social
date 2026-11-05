@@ -564,3 +564,20 @@ export function blueskyInstanceInfo(domain) {
     _bluesky: true,
   };
 }
+
+// The text Bluesky muted words are checked against: the post text, its tags,
+// link card title and description, image alt text, and the same parts of a
+// quoted post, one level deep.
+export function mutedWordText(status, depth = 0) {
+  if (!status) return '';
+  return [
+    status.text,
+    ...(status.tags || []).map((t) => t.name),
+    status.card?.title,
+    status.card?.description,
+    ...(status.mediaAttachments || []).map((m) => m.description),
+    depth < 1 ? mutedWordText(status.quote?.quotedStatus, depth + 1) : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}

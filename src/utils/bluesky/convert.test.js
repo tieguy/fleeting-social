@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { postToStatus } from './convert';
+import { mutedWordText, postToStatus } from './convert';
 
 // Build a minimal Bluesky post view whose record text @-mentions someone.
 // Byte offsets index into the UTF-8 encoding of `text`.
@@ -84,5 +84,45 @@ describe('postToStatus mentions', () => {
       'bsky.social',
     );
     expect(status.mentions[0].acct).toBe('did:plc:x');
+  });
+});
+
+describe('mutedWordText', () => {
+  it('covers text, tags, card, alt text and the quoted post', () => {
+    const text = mutedWordText({
+      text: 'post body',
+      tags: [{ name: 'tagword' }],
+      card: { title: 'card title', description: 'card desc' },
+      mediaAttachments: [{ description: 'alt words' }],
+      quote: {
+        quotedStatus: {
+          text: 'quoted body',
+          card: { title: 'quoted card' },
+          mediaAttachments: [{ description: 'quoted alt' }],
+        },
+      },
+    });
+    for (const part of [
+      'post body',
+      'tagword',
+      'card title',
+      'card desc',
+      'alt words',
+      'quoted body',
+      'quoted card',
+      'quoted alt',
+    ]) {
+      expect(text).toContain(part);
+    }
+  });
+
+  it('stops at one level of quoting', () => {
+    const text = mutedWordText({
+      text: 'a',
+      quote: {
+        quotedStatus: { text: 'b', quote: { quotedStatus: { text: 'c' } } },
+      },
+    });
+    expect(text).toBe('a\nb');
   });
 });
