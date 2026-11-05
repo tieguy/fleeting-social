@@ -18,6 +18,10 @@
   .lab-sources {
     padding-inline-start: 20px;
     font-size: 90%;
+
+    .lab-failed {
+      color: var(--red-color);
+    }
   }
 
   .lab-results {

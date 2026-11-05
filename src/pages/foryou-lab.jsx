@@ -361,9 +361,26 @@ function ForYouLab() {
     (async () => {
       const cutoff = Date.now() - WINDOW_MS;
       try {
-        const loaded = await Promise.all(
+        // One account failing, such as an expired Bluesky session, skips
+        // that account instead of failing the whole lab
+        const settled = await Promise.allSettled(
           sources.current.map((s) => loadSource(s, cutoff, log)),
         );
+        const loaded = [];
+        const failed = [];
+        settled.forEach((r, i) => {
+          if (r.status === 'fulfilled') {
+            loaded.push(r.value);
+          } else {
+            const { instance } = sources.current[i];
+            const message = String(r.reason?.message || r.reason);
+            failed.push({ instance, failed: message });
+            log(`${instance}: failed (${message}), skipped`);
+          }
+        });
+        if (!loaded.length) {
+          throw new Error(failed.map((f) => f.failed).join('; '));
+        }
         const pool = buildPool(
           loaded.flatMap((s) => s.entries),
           {
@@ -391,25 +408,28 @@ function ForYouLab() {
           byKey,
           mastoByInstance: new Map(loaded.map((s) => [s.instance, s.masto])),
           poolSize: pool.length,
-          sources: loaded.map(
-            ({
-              instance,
-              homeCount,
-              homeHours,
-              homeWalk,
-              feeds,
-              own,
-              likes,
-            }) => ({
-              instance,
-              homeCount,
-              homeHours,
-              homePages: homeWalk.pages,
-              homeStop: homeWalk.stop,
-              feeds,
-              activity: own.length + likes.length,
-            }),
-          ),
+          sources: [
+            ...loaded.map(
+              ({
+                instance,
+                homeCount,
+                homeHours,
+                homeWalk,
+                feeds,
+                own,
+                likes,
+              }) => ({
+                instance,
+                homeCount,
+                homeHours,
+                homePages: homeWalk.pages,
+                homeStop: homeWalk.stop,
+                feeds,
+                activity: own.length + likes.length,
+              }),
+            ),
+            ...failed,
+          ],
         });
       } catch (e) {
         console.error(e);
@@ -543,19 +563,26 @@ function ForYouLab() {
                   reveal them.
                 </p>
                 <ul class="lab-sources">
-                  {lab.sources.map((s) => (
-                    <li key={s.instance}>
-                      <b>{s.instance}</b>: {s.homeCount} home items over{' '}
-                      {s.homeHours} h
-                      {s.feeds.map((f) => (
-                        <span key={f.title}>
-                          {' '}
-                          · {f.title} {f.failed ? '(failed)' : f.count}
-                        </span>
-                      ))}{' '}
-                      · {s.activity} of your posts and likes
-                    </li>
-                  ))}
+                  {lab.sources.map((s) =>
+                    s.failed ? (
+                      <li key={s.instance} class="lab-failed">
+                        <b>{s.instance}</b>: not loaded ({s.failed}). Log back
+                        in to this account to include it.
+                      </li>
+                    ) : (
+                      <li key={s.instance}>
+                        <b>{s.instance}</b>: {s.homeCount} home items over{' '}
+                        {s.homeHours} h
+                        {s.feeds.map((f) => (
+                          <span key={f.title}>
+                            {' '}
+                            · {f.title} {f.failed ? '(failed)' : f.count}
+                          </span>
+                        ))}{' '}
+                        · {s.activity} of your posts and likes
+                      </li>
+                    ),
+                  )}
                 </ul>
                 <p>
                   Judged {judgedCount} of {lab.union.length}.{' '}
