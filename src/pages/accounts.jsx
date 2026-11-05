@@ -14,6 +14,7 @@ import MenuLink from '../components/menu-link';
 import Menu2 from '../components/menu2';
 import NameText from '../components/name-text';
 import RelativeTime from '../components/relative-time';
+import { isLoggedIn } from '../utils/acting-accounts';
 import { api } from '../utils/api';
 import { revokeAccessToken } from '../utils/auth';
 import { isBlueskyAccount, logoutBluesky } from '../utils/bluesky';
@@ -59,9 +60,9 @@ function Accounts({ onClose }) {
             {accounts.map((account, i) => {
               const isCurrent = account.info.id === currentAccount;
               const isDefault = i === 0; // first account is always default
-              // authExpired = Bluesky session died server-side; the stored
-              // tokens are useless so treat it exactly like logged out
-              const isLoggedOut = !account.accessToken || account.authExpired;
+              // The same rule as the composer and the merged views, so an
+              // account they skip offers "Log back in" here
+              const isLoggedOut = !isLoggedIn(account);
               const unicodeAcct = account.info.acct
                 ? punycode.toUnicode(account.info.acct)
                 : account.info.acct;

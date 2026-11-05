@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { accountRoster, eligibleAccounts } from './acting-accounts';
+import {
+  accountRoster,
+  eligibleAccounts,
+  isLoggedIn,
+} from './acting-accounts';
 
 const bsky = {
   accountType: 'bluesky',
@@ -106,5 +110,27 @@ describe('accountRoster', () => {
       accountRoster({ accounts: [masto, bsky], currentID: 'nope' }),
     ).toEqual([masto, bsky]);
     expect(accountRoster({ accounts: [masto, bsky] })).toEqual([masto, bsky]);
+  });
+});
+
+describe('isLoggedIn', () => {
+  it('needs a refresh JWT for a Bluesky account', () => {
+    const bsky = { accountType: 'bluesky', accessToken: 'a' };
+    expect(isLoggedIn(bsky)).toBe(false);
+    expect(isLoggedIn({ ...bsky, blueskySession: { refreshJwt: 'r' } })).toBe(
+      true,
+    );
+    expect(
+      isLoggedIn({
+        ...bsky,
+        blueskySession: { refreshJwt: 'r' },
+        authExpired: true,
+      }),
+    ).toBe(false);
+  });
+
+  it('needs an access token for a Mastodon account', () => {
+    expect(isLoggedIn({ accessToken: 't' })).toBe(true);
+    expect(isLoggedIn({})).toBe(false);
   });
 });

@@ -11,7 +11,12 @@
 // Mirrors isBlueskyAccount() / isBlueskyLoggedIn() in ./bluesky/index.js,
 // inlined for the store-free reason above.
 const isBlueskyAcct = (account) => account?.accountType === 'bluesky';
-const isLoggedIn = (account) =>
+
+// Whether a stored account can act. A Bluesky account needs an app-password
+// refresh JWT and no `authExpired` flag; an `accessToken` alone does not
+// count, because a Bluesky account stored by the removed OAuth login holds
+// an access token and no refresh JWT. A Mastodon account needs a token.
+export const isLoggedIn = (account) =>
   isBlueskyAcct(account)
     ? !account.authExpired && !!account.blueskySession?.refreshJwt
     : !!account?.accessToken;
