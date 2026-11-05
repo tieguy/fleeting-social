@@ -447,8 +447,7 @@ function ForYou() {
                   .map((s) => (
                     <p key={s.instance} class="foryou-failed">
                       <Trans>
-                        {s.instance} not loaded. Log back in to this account to
-                        include it.
+                        {s.instance} not loaded: {s.failed}
                       </Trans>
                     </p>
                   ))}

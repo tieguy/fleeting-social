@@ -4565,7 +4565,7 @@ msgid "✓ Not for me"
 msgstr "✓ Not for me"
 
 #: src/pages/foryou.jsx:168
-#: src/pages/foryou.jsx:557
+#: src/pages/foryou.jsx:556
 msgid "Not for me"
 msgstr "Not for me"
 
@@ -4615,43 +4615,49 @@ msgid "Posts from the last 24 hours."
 msgstr "Posts from the last 24 hours."
 
 #. placeholder {0}: s.instance
+#. placeholder {1}: s.failed
 #: src/pages/foryou.jsx:449
-msgid "{0} not loaded. Log back in to this account to include it."
-msgstr "{0} not loaded. Log back in to this account to include it."
+msgid "{0} not loaded: {1}"
+msgstr "{0} not loaded: {1}"
 
-#: src/pages/foryou.jsx:463
+#. placeholder {0}: s.instance
+#: src/pages/foryou.jsx:449
+#~ msgid "{0} not loaded. Log back in to this account to include it."
+#~ msgstr "{0} not loaded. Log back in to this account to include it."
+
+#: src/pages/foryou.jsx:462
 msgid "Nothing new since your last digest."
 msgstr "Nothing new since your last digest."
 
-#: src/pages/foryou.jsx:467
+#: src/pages/foryou.jsx:466
 msgid "Show the previous digest"
 msgstr "Show the previous digest"
 
-#: src/pages/foryou.jsx:514
+#: src/pages/foryou.jsx:513
 msgid "That's all for now."
 msgstr "That's all for now."
 
-#: src/pages/foryou.jsx:521
+#: src/pages/foryou.jsx:520
 msgid "Removed by filters:"
 msgstr "Removed by filters:"
 
-#: src/pages/foryou.jsx:532
+#: src/pages/foryou.jsx:531
 msgid "{instance}: {homeCount} home posts read, back {homeHours} h"
 msgstr "{instance}: {homeCount} home posts read, back {homeHours} h"
 
-#: src/pages/foryou.jsx:542
+#: src/pages/foryou.jsx:541
 msgid "How each rule is doing"
 msgstr "How each rule is doing"
 
-#: src/pages/foryou.jsx:548
+#: src/pages/foryou.jsx:547
 msgid "Rule"
 msgstr "Rule"
 
-#: src/pages/foryou.jsx:551
+#: src/pages/foryou.jsx:550
 msgid "Shown"
 msgstr "Shown"
 
-#: src/pages/foryou.jsx:554
+#: src/pages/foryou.jsx:553
 msgid "Interesting"
 msgstr "Interesting"
 
