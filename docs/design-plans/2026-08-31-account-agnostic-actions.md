@@ -97,6 +97,7 @@ Divergence from upstream Phanpy (single cross-post toggle, single Profile link) 
 **Components:**
 - `src/components/compose.jsx` — replace `crossPostAccounts`/`crossPost` (lines 227-236) and the cross-post toolbar (lines 2152-2181) with an AccountPicker checkbox list bound to `targetAccounts`; persist unchecked set in `store.local`; disable Post at zero targets; drive the publish loop (lines 1717-1752) from the checked set as peers
 - `src/utils/compose-counting.js` integration — strictest-network char limit from the checked set
+- Accepted deviation (signed off 2026-08-31): the composer keeps the account it opened with as an internal primary. The UI shows no primary. When that account is unchecked, the composer skips its publish and its media pre-upload, and every checked target posts through the re-upload path.
 
 **Dependencies:** Phase 1.
 

@@ -1,10 +1,15 @@
 # fleeting-social — developer notes
 
-Last verified: 2026-10-21
+Last verified: 2026-11-05
 
 fleeting-social is a fork of [Phanpy](https://github.com/cheeaun/phanpy) (a Mastodon web client) that adds native Bluesky (AT Protocol) support and interweaves the two networks. Most of the codebase is stock Phanpy; the fork-specific machinery lives under `src/utils/bluesky/` plus a handful of merge/filter helpers.
 
 For the product goal and the user-facing feature list, see [`README.md`](README.md). This file is for how the Bluesky half is built.
+
+## Working in this repo
+
+- Commit straight to `main` and push without asking again; the operator is the only user. `main` deploys to the live site within 10 minutes (see Deployment). Fetch and fast-forward before starting. Destructive actions still need a go-ahead.
+- Issues are in the Linear project [fleeting-social](https://linear.app/luis-vila/project/fleeting-social-776e952fabbc), team "Luis Villa".
 
 ## Bluesky support architecture
 
@@ -29,7 +34,7 @@ An account's `authExpired` flag hides it from every merged view and shows "Log b
 - **The client re-reads the store on every call.** It resumes from the stored session, not the one it was created with, and stays registered after a failure. A newer refresh JWT in the store (another tab's rotation, or a fresh login) revives it, and a successful refresh clears the flag (`persistSessionForAccount` in `index.js`). Rotations persisted by another tab are adopted through the `storage` event without a network call (`adoptSession`).
 - **A 401 that survives the agent's own refresh triggers one explicit refresh.** `@atproto/api` treats every refresh failure other than a 401, `ExpiredToken` or `InvalidToken` as transient and keeps the session, so requests can go on failing with "Authentication Required" while the account looks logged in. The client wraps the agent's `fetchHandler`, and on a 401 response `proveSession` refreshes once, at most once a minute. The account is marked expired only when the server refuses that refresh with a 4xx other than 429 and the store holds no newer token. A network failure, a 429 or a 5xx changes nothing.
 
-The facade deliberately over-loads some Mastodon concepts. `v1.statuses.$select(id).quotes.list()` — Mastodon's own quotes endpoint, API v7+ — is backed by `app.bsky.feed.getQuotes` and, like masto.js, yields **statuses** rather than accounts (unlike the sibling `favouritedBy` / `rebloggedBy` listings). `v1.lists.list()` returns not only the user's Bluesky lists but also their subscribed **feed generators**, shaped as lists and tagged `_feed`. Per-list metadata and timeline calls branch on the AT-URI collection (`app.bsky.feed.generator` → `getFeedGenerator`/`getFeed`; `app.bsky.graph.list` → `getList`/`getListFeed`). Consumers must treat `_feed` entries as read-only — no edit / manage-members — see `src/pages/lists.jsx` and `src/pages/list.jsx`.
+The facade deliberately over-loads some Mastodon concepts. `v1.statuses.$select(id).quotes.list()` — Mastodon's own quotes endpoint, API v7+ — is backed by `app.bsky.feed.getQuotes` and, like masto.js, yields **statuses** rather than accounts (unlike the sibling `favouritedBy` / `rebloggedBy` listings). `v1.lists.list()` returns not only the user's Bluesky lists but also their subscribed **feed generators**, shaped as lists and tagged `_feed`. Per-list metadata and timeline calls branch on the AT-URI collection (`app.bsky.feed.generator` → `getFeedGenerator`/`getFeed`; `app.bsky.graph.list` → `getList`/`getListFeed`). Consumers must treat `_feed` entries as read-only — no edit / manage-members — see `src/pages/lists.jsx` and `src/pages/list.jsx`. A feed opened by a deep link before the Lists page has loaded is read through the current account, as a list is; open feeds from the Lists page.
 
 ### Publishing and threading
 
@@ -231,8 +236,10 @@ Fleeting is single-user and served only on the operator's tailnet, from `deeptho
 - **Serving.** A Caddy Quadlet serves `~/containers/volumes/fleeting/site/current` on `127.0.0.1:8085`, and `tailscale serve --service=svc:fleeting` terminates TLS in front of it. Missing files get a plain 404, which the service worker's stale-shell recovery relies on.
 - **Deploys are pulls.** `fleeting-deploy.timer` runs every 10 minutes. The script compares the head of `main` on GitHub with `site/deployed-sha` and does nothing if they match. Otherwise it builds that commit in a clean clone, copies `dist/` to `site/releases/<sha>`, and swaps the `current` symlink; it keeps the newest three releases. A failed build leaves the running release in place. `systemctl --user start fleeting-deploy.service` deploys immediately.
 - **Build settings** (`FLEETING_ACCOUNTS`, `FLEETING_WEBSITE`, `FLEETING_DISALLOW_ROBOTS`) are `Environment=` lines in `fleeting-deploy.service`.
-- **Headers.** The CSP and security headers are computed in `vite.config.js` and written to the Netlify-style `dist/_headers`. The deploy script converts that file into the Caddy snippet `site/headers.caddy`, and restarts Caddy only when the snippet changes.
+- **Headers.** The CSP and security headers are computed in `vite.config.js` and written to the Netlify-style `dist/_headers`. The CSP has `script-src 'self'`, so an inline `<script>` or a dependency that uses `eval`, `new Function` or WebAssembly shows a blank page in production. The comments in `vite.config.js` list what the policy allows and why. The deploy script converts that file into the Caddy snippet `site/headers.caddy`, and restarts Caddy only when the snippet changes.
 
 ## Naming
 
-The project was renamed from `phanpy-plus` to `fleeting-social`. As of this rename the change is **README + docs only** — `package.json`, the git repo/remote, deploy config, and in-code strings still say `phanpy`/`phanpy-plus` and are a separate pass.
+The project is `fleeting-social`, and the name users see is "Fleeting". The package name, the `FLEETING_*` build variables and the user-facing strings use it, and `src/utils/rename-guard.test.js` fails if `PHANPY_` or `Phanpy+` comes back. The GitHub repository is still `tieguy/phanpy-plus`.
+
+Some `phanpy` names stay by decision, because they credit upstream or keep compatibility: the `@phanpy@hachyderm.io` credit, the `cheeaun/phanpy` and `lingva.phanpy.social` service references, the `<phanpy-shortcuts-settings>` marker in profile bios (renaming it would lose users' saved shortcuts), `mock-posts.json`, and `// phanpy` code comments.
