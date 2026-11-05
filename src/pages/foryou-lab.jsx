@@ -182,16 +182,26 @@ function DislikeReasons({ candidate, masto, given, onReason }) {
 }
 
 // Reads pages until a page ends with an item older than the cutoff (when
-// `cutoff` is set) or `pages` pages are read. One old item mid-page, such as a
-// backdated post, does not stop the walk. Custom feeds are not chronological,
-// so they pass no cutoff.
-async function collect(iterator, { pages, cutoff }) {
+// `cutoff` is set), the iterator ends, or `pages` pages are read. One old item
+// mid-page, such as a backdated post, does not stop the walk, and neither does
+// an empty page: the Bluesky facade filters pages after fetching them. Custom
+// feeds are not chronological, so they pass no cutoff. `stats`, when given,
+// receives the page count and the reason the walk stopped.
+async function collect(iterator, { pages, cutoff, stats = {} }) {
   const items = [];
+  stats.pages = 0;
+  stats.stop = 'page cap';
   for (let i = 0; i < pages; i++) {
     const { done, value } = await iterator.next();
-    if (done || !value?.length) break;
+    if (done) {
+      stats.stop = 'end of timeline';
+      break;
+    }
+    stats.pages++;
+    if (!value?.length) continue;
     items.push(...value);
     if (cutoff && Date.parse(value[value.length - 1].createdAt) < cutoff) {
+      stats.stop = 'cutoff';
       break;
     }
   }
@@ -210,9 +220,10 @@ async function mapLimit(items, limit, fn) {
 async function loadSource({ masto, instance }, cutoff, log) {
   const self = await masto.v1.accounts.verifyCredentials();
   log(`${instance}: reading home timeline`);
+  const homeWalk = {};
   const home = await collect(
     masto.v1.timelines.home.list({ limit: 40 }).values(),
-    { pages: HOME_PAGES, cutoff },
+    { pages: HOME_PAGES, cutoff, stats: homeWalk },
   );
   const entries = home.map((item) => ({ item, origin: 'home', instance }));
   // Hours of home timeline read, from the last item reached; under 24 means
@@ -279,6 +290,7 @@ async function loadSource({ masto, instance }, cutoff, log) {
     mutedWords,
     homeCount: home.length,
     homeHours,
+    homeWalk,
     feeds,
     own: own.map((status) => ({ instance, status })),
     likes: likes.map((status) => ({ instance, status })),
@@ -380,10 +392,20 @@ function ForYouLab() {
           mastoByInstance: new Map(loaded.map((s) => [s.instance, s.masto])),
           poolSize: pool.length,
           sources: loaded.map(
-            ({ instance, homeCount, homeHours, feeds, own, likes }) => ({
+            ({
               instance,
               homeCount,
               homeHours,
+              homeWalk,
+              feeds,
+              own,
+              likes,
+            }) => ({
+              instance,
+              homeCount,
+              homeHours,
+              homePages: homeWalk.pages,
+              homeStop: homeWalk.stop,
               feeds,
               activity: own.length + likes.length,
             }),
@@ -455,6 +477,8 @@ function ForYouLab() {
           reasons: reasons[key] || [],
           rules: rulesByKey.get(key),
           author: c.status.account?.acct,
+          // Language the author's client declared, not detected from the text
+          language: c.status.language || null,
           origins: [...c.origins],
           features: lab.featuresByKey.get(key),
           counts: {
