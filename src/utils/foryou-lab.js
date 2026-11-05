@@ -79,6 +79,27 @@ export function hasMutedWord(text, mutedWords, now = Date.now()) {
   return false;
 }
 
+// Languages the user reads, as ISO 639-1 codes
+export const READABLE_LANGUAGES = new Set(['en', 'es']);
+
+// False when a post is written in a language the user does not read. The
+// language the author's client declared is trusted when present; the text is
+// also checked for script, because a post in Japanese or Cyrillic is often
+// declared as English. A post with no declared language and Latin text passes.
+// Only the post's own text counts, not a quoted post.
+export function isReadable(status, languages = READABLE_LANGUAGES) {
+  const lang = status?.language?.toLowerCase().split(/[-_]/)[0];
+  if (lang && !languages.has(lang)) return false;
+  const text = [status?.spoilerText, plainText(status?.content)]
+    .join(' ')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/[#@]\S+/g, '');
+  const letters = text.match(/\p{L}/gu) || [];
+  if (!letters.length) return true;
+  const latin = text.match(/\p{Script=Latin}/gu) || [];
+  return latin.length / letters.length >= 0.5;
+}
+
 // The text muted words are checked against: the post, its content warning,
 // link card, image alt text, and the same parts of a quoted post.
 export function mutableText(status, depth = 0) {
@@ -100,7 +121,8 @@ export function mutableText(status, depth = 0) {
 // direct, and not replies (a self-thread is represented by its first post).
 // Drops muted and blocked authors and boosters, including those on Bluesky
 // mute and block lists, posts that match a Mastodon home filter, and posts
-// on either network that hold a Bluesky muted word.
+// on either network that hold a Bluesky muted word, and posts in a
+// language the user does not read (see isReadable).
 // `boostedBy` counts accounts in the home timeline that boosted the post;
 // `quotedBy` counts home-timeline authors whose posts quote it. `inHome` is
 // set when the post itself, not a boost of it, is in the home timeline.
@@ -136,6 +158,7 @@ export function buildPool(
         .filter(Boolean)
         .join('\n');
       if (hasMutedWord(mutableText(status), mutedWords)) continue;
+      if (!isReadable(status)) continue;
       candidate = {
         key,
         instance,
