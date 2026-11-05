@@ -84,10 +84,22 @@ export default function Modals({ conversationMode = false }) {
             sharedData={window.__SHARED_DATA__ || null}
             onClose={(results) => {
               const { newStatus, instance, type, scheduledAt } = results || {};
+              const replyToStatus =
+                typeof states.showCompose === 'object'
+                  ? states.showCompose?.replyToStatus
+                  : window.__COMPOSE__?.replyToStatus;
               states.showCompose = false;
               window.__COMPOSE__ = null;
               window.__SHARED_DATA__ = null;
               if (newStatus) {
+                // Read by the For You page, which counts a reply to a
+                // digest post for the rule that picked it
+                states.lastPosted = {
+                  type,
+                  instance,
+                  newStatus,
+                  replyToStatus,
+                };
                 states.reloadStatusPage++;
                 if (scheduledAt) states.reloadScheduledPosts++;
                 showToast({

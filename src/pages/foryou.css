@@ -1,0 +1,85 @@
+#foryou-page {
+  .foryou-intro {
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--outline-color);
+
+    p {
+      margin: 8px 0;
+    }
+
+    .foryou-failed {
+      color: var(--red-color);
+    }
+  }
+
+  .foryou-posts {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+
+    > li {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--outline-color);
+
+      &.foryou-verdict-not-for-me {
+        opacity: 0.6;
+      }
+    }
+  }
+
+  .foryou-why {
+    margin: 0;
+    padding: 0 16px;
+    font-size: 85%;
+  }
+
+  .foryou-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 0 16px;
+
+    button.plain {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+      color: var(--text-insignificant-color);
+    }
+
+    button.liked {
+      color: var(--favourite-color);
+    }
+
+    button.boosted {
+      color: var(--reblog-color);
+    }
+
+    > :last-child {
+      margin-inline-start: auto;
+    }
+  }
+
+  .foryou-end {
+    padding: 24px 16px;
+    text-align: center;
+  }
+
+  .foryou-footer {
+    padding: 8px 16px 32px;
+    font-size: 85%;
+
+    .foryou-coverage {
+      display: block;
+    }
+
+    table {
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      text-align: start;
+      padding: 4px 12px 4px 0;
+    }
+  }
+}

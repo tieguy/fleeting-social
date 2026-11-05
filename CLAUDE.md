@@ -84,6 +84,44 @@ Three invariants:
 - **No responses-only filter.** `settings.notificationsResponsesOnly` does not apply here, and the notification page, bell dropdown and badge do not change.
 - **Counts are what each server knows.** A Mastodon instance sees only the likes and boosts that federated to it, so both the tally and the lifetime totals can be lower than the fediverse-wide numbers.
 
+## For You
+
+`/foryou` (`src/pages/foryou.jsx`) is a finite digest of posts from the
+people the user follows, three Bluesky topic feeds and an "Always show"
+list. The design plan is `docs/design-plans/2026-11-05-for-you.md`. The
+route exists only in the full-app route tree, so conversation mode
+redirects it. It is in the nav menu and is a shortcut type.
+
+- **Rules and data.** The page ranks with the lab's rules (`RULES`,
+  `scorePool`, `pickForRule` in `src/utils/foryou-lab.js`) and loads
+  through `src/utils/foryou-load.js`, which the lab
+  (`/_foryou-lab`) also uses. A rule change in the lab changes the digest.
+- **Pure parts.** `src/utils/foryou.js`: `digestCutoff` (30 minutes before
+  last read, at most 24 hours back), `blendDigest` ("Always show" posts
+  first, then team-draft interleaving across the rules, then 2 random posts
+  at random positions, at most 2 per author outside the list),
+  `reasonFor` (the "why this post" line as a type and values; the page
+  words it) and `tallyRules`.
+- **Filter counts.** `buildPool` takes a `removed` object and fills it with
+  the post keys each filter dropped. The page adds the posts that an
+  earlier digest showed.
+- **State.** `src/utils/foryou-store.js` is the only module that knows
+  where last read, the digests shown and the verdicts live. It uses
+  localStorage key `foryouState` and has an async interface, so the
+  deepthought service can replace it. Last read is recorded when the end
+  of a non-empty digest scrolls into view.
+- **Verdicts.** A like, boost or reply on a digest post counts as
+  "interesting" for the rule that took it; "Not for me" counts against
+  it. The page watches `states.statuses` for `favourited` and `reblogged`
+  changes, so the post's own menu counts too, and watches
+  `states.lastPosted`, which `Modals` sets when the composer posts. The
+  digest has its own reply, boost and like row because the timeline's
+  action bar shows only on hover.
+- **Reasons.** `src/components/dislike-reasons.jsx` holds the "Not for
+  me" reasons for both the page and the lab.
+
+`tests/foryou.spec.js` drives the page against a stubbed Mastodon server.
+
 ## Quote without attribution
 
 A quote action in both boost/quote menus (action bar and kebab, `src/components/status.jsx`), alongside the instance's native quote or link-quote item, shares a post's text as a PNG card with the author redacted, attached to a new post with alt text prefilled. Four modules under `src/utils/`:

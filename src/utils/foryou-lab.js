@@ -161,12 +161,19 @@ export function mutableText(status, depth = 0) {
 // `boostedBy` counts accounts in the home timeline that boosted the post;
 // `quotedBy` counts home-timeline authors whose posts quote it. `inHome` is
 // set when the post itself, not a boost of it, is in the home timeline.
+//
+// `removed`, when given, receives the posts each filter removed, as
+// { [filter]: Set of post keys }. A post that another timeline item brought
+// into the pool does not count as removed.
 export function buildPool(
   entries,
-  { cutoff, selfKeys = new Set(), mutedWords = [] },
+  { cutoff, selfKeys = new Set(), mutedWords = [], removed = {} },
 ) {
   const pool = new Map();
   const quotes = [];
+  const drop = (filter, instance, status) => {
+    (removed[filter] ||= new Set()).add(`${instance}/${status.id}`);
+  };
   for (const { item, origin, instance, strangers } of entries) {
     if (!item) continue;
     let status = item.reblog || item;
@@ -176,18 +183,26 @@ export function buildPool(
     let viaQuote = false;
     if (!isReadable(status)) {
       const quoted = status.quote?.quotedStatus;
-      if (!quoted?.id || !isReadable(quoted)) continue;
-      if (isHiddenAuthor(status.account)) continue;
+      if (!quoted?.id || !isReadable(quoted)) {
+        drop('language', instance, status);
+        continue;
+      }
+      if (isHiddenAuthor(status.account)) {
+        drop('muted', instance, status);
+        continue;
+      }
       status = quoted;
       viaQuote = true;
     }
     if (isHiddenAuthor(status.account) || isHiddenAuthor(item.account)) {
+      drop('muted', instance, status);
       continue;
     }
     if (
       isFiltered(item.filtered, 'home') ||
       isFiltered(status.filtered, 'home')
     ) {
+      drop('filter', instance, status);
       continue;
     }
     const key = `${instance}/${status.id}`;
@@ -198,11 +213,17 @@ export function buildPool(
       if (status.visibility === 'direct') continue;
       // Replies make no sense out of context, and that includes the later
       // posts of a self-thread. The thread's first post stands for it.
-      if (status.inReplyToId || status.inReplyToAccountId) continue;
+      if (status.inReplyToId || status.inReplyToAccountId) {
+        drop('reply', instance, status);
+        continue;
+      }
       const text = [status.spoilerText, plainText(status.content)]
         .filter(Boolean)
         .join('\n');
-      if (hasMutedWord(mutableText(status), mutedWords)) continue;
+      if (hasMutedWord(mutableText(status), mutedWords)) {
+        drop('mutedWord', instance, status);
+        continue;
+      }
       candidate = {
         key,
         instance,
@@ -234,6 +255,9 @@ export function buildPool(
     }
   }
   for (const { key, by } of quotes) pool.get(key)?.quotedBy.add(by);
+  for (const keys of Object.values(removed)) {
+    for (const key of pool.keys()) keys.delete(key);
+  }
   return [...pool.values()];
 }
 
@@ -416,7 +440,9 @@ export function pickForRule(
   return { picks, eligible: ranked.length };
 }
 
-export function runLab(pool, { followers, affinity, seed }) {
+// Features for every candidate. Returns the scored list that pickForRule
+// takes, and the features by post key.
+export function scorePool(pool, { followers, affinity }) {
   const homePostsByAuthor = new Map();
   for (const c of pool) {
     if (c.inHome) {
@@ -439,6 +465,11 @@ export function runLab(pool, { followers, affinity, seed }) {
   const featuresByKey = new Map(
     scored.map(({ candidate, features }) => [candidate.key, features]),
   );
+  return { scored, featuresByKey };
+}
+
+export function runLab(pool, { followers, affinity, seed }) {
+  const { scored, featuresByKey } = scorePool(pool, { followers, affinity });
   const rules = RULES.map((rule) => ({
     id: rule.id,
     name: rule.name,

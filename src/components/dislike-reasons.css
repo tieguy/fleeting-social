@@ -1,0 +1,15 @@
+.lab-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 16px 0;
+
+  button {
+    font-size: 90%;
+  }
+
+  input {
+    width: 10em;
+  }
+}

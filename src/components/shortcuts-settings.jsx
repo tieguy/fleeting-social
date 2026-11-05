@@ -36,6 +36,7 @@ const TYPES = [
   'mentions',
   'notifications',
   'engagement',
+  'foryou',
   'list',
   'public',
   'trending',
@@ -60,6 +61,7 @@ const TYPE_TEXT = {
   trending: msg`Trending`,
   mentions: msg`Mentions`,
   engagement: msg`Engagement`,
+  foryou: msg`For You`,
   profile: msg`Profile`,
 };
 const TYPE_PARAMS = {
@@ -163,6 +165,13 @@ export const SHORTCUTS_META = {
     title: msg`Engagement`,
     path: '/engagement',
     icon: 'chart',
+  },
+  foryou: {
+    id: 'foryou',
+    title: msg`For You`,
+    path: '/foryou',
+    icon: 'sparkles',
+    excludeViewMode: () => ['multi-column'],
   },
   list: {
     id: ({ id }) => (id ? 'list' : 'lists'),

@@ -97,6 +97,7 @@ const Sandbox =
     ? lazy(() => import('./pages/sandbox'))
     : () => null;
 const ForYouLab = lazy(() => import('./pages/foryou-lab'));
+const ForYou = lazy(() => import('./pages/foryou'));
 
 // Lazy load MockHome component only in development (not FLEETING_DEV)
 const MockHome = lazy(() => import('./pages/mock-home'));
@@ -891,6 +892,17 @@ function SecondaryRoutes() {
         element={
           <AuthRoute>
             <Engagement />
+          </AuthRoute>
+        }
+      />
+      {/* Full-app windows only: conversation mode has no route to it */}
+      <Route
+        path="/foryou"
+        element={
+          <AuthRoute>
+            <Suspense fallback={<Loader />}>
+              <ForYou />
+            </Suspense>
           </AuthRoute>
         }
       />

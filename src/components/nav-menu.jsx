@@ -242,6 +242,12 @@ function NavMenu(props) {
                   <Trans>Engagement</Trans>
                 </span>
               </MenuLink>
+              <MenuLink to="/foryou">
+                <Icon icon="sparkles" size="l" />{' '}
+                <span>
+                  <Trans>For You</Trans>
+                </span>
+              </MenuLink>
               <MenuDivider />
               {currentAccount?.info?.id &&
                 (profileRoster.length > 1 ? (

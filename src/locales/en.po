@@ -169,7 +169,7 @@ msgstr ""
 #: src/components/account-info.jsx:659
 #: src/components/related-actions.jsx:689
 #: src/components/related-actions.jsx:964
-#: src/components/shortcuts-settings.jsx:1107
+#: src/components/shortcuts-settings.jsx:1116
 msgid "QR code"
 msgstr "QR code"
 
@@ -239,6 +239,7 @@ msgstr ""
 #: src/pages/catchup.jsx:74
 #: src/pages/catchup.jsx:1594
 #: src/pages/catchup.jsx:2249
+#: src/pages/foryou.jsx:176
 #: src/pages/status.jsx:1225
 #: src/pages/status.jsx:1955
 #: src/pages/year-in-posts.jsx:1394
@@ -304,9 +305,9 @@ msgstr "View post stats"
 #: src/components/quotes-modal.jsx:80
 #: src/components/report-collection.jsx:33
 #: src/components/report-modal.jsx:118
-#: src/components/shortcuts-settings.jsx:255
-#: src/components/shortcuts-settings.jsx:608
-#: src/components/shortcuts-settings.jsx:809
+#: src/components/shortcuts-settings.jsx:264
+#: src/components/shortcuts-settings.jsx:617
+#: src/components/shortcuts-settings.jsx:818
 #: src/components/status.jsx:3722
 #: src/components/status.jsx:3934
 #: src/components/translated-bio-sheet.jsx:21
@@ -427,7 +428,7 @@ msgstr "Search accounts"
 #: src/components/compose-poll.jsx:80
 #: src/components/compose.jsx:2244
 #: src/components/mention-modal.jsx:221
-#: src/components/shortcuts-settings.jsx:740
+#: src/components/shortcuts-settings.jsx:749
 #: src/pages/list.jsx:399
 msgid "Add"
 msgstr ""
@@ -499,7 +500,7 @@ msgstr "Unlisted"
 #: src/components/edit-profile-sheet.jsx:695
 #: src/components/list-add-edit.jsx:152
 #: src/components/quote-settings-sheet.jsx:92
-#: src/components/shortcuts-settings.jsx:740
+#: src/components/shortcuts-settings.jsx:749
 #: src/pages/filters.jsx:607
 #: src/pages/notifications.jsx:1259
 msgid "Save"
@@ -574,7 +575,7 @@ msgstr "Add account"
 
 #: src/components/columns.jsx:30
 #: src/components/nav-menu.jsx:200
-#: src/components/shortcuts-settings.jsx:144
+#: src/components/shortcuts-settings.jsx:146
 #: src/components/timeline.jsx:546
 #: src/components/timeline2.jsx:580
 #: src/pages/account-collections.jsx:142
@@ -601,7 +602,7 @@ msgid "Compose"
 msgstr ""
 
 #: src/components/compose-button.jsx:193
-#: src/components/nav-menu.jsx:325
+#: src/components/nav-menu.jsx:331
 #: src/pages/scheduled-posts.jsx:31
 #: src/pages/scheduled-posts.jsx:78
 msgid "Scheduled Posts"
@@ -619,7 +620,7 @@ msgstr "Choice {0}"
 
 #: src/components/compose-poll.jsx:64
 #: src/components/media-attachment.jsx:384
-#: src/components/shortcuts-settings.jsx:751
+#: src/components/shortcuts-settings.jsx:760
 #: src/components/thread-segment-editor.jsx:138
 #: src/pages/catchup.jsx:1228
 #: src/pages/filters.jsx:450
@@ -886,8 +887,8 @@ msgid "Quotes can't be embedded in private mentions."
 msgstr "Quotes can't be embedded in private mentions."
 
 #: src/components/compose.jsx:2548
-#: src/components/nav-menu.jsx:412
-#: src/components/shortcuts-settings.jsx:176
+#: src/components/nav-menu.jsx:418
+#: src/components/shortcuts-settings.jsx:185
 #: src/utils/visibility-text.jsx:5
 msgid "Local"
 msgstr ""
@@ -925,6 +926,7 @@ msgstr "Schedule"
 #: src/components/status.jsx:3176
 #: src/components/status.jsx:3188
 #: src/pages/conversation-thread.jsx:116
+#: src/pages/foryou.jsx:133
 msgid "Reply"
 msgstr ""
 
@@ -981,6 +983,61 @@ msgstr "Zoom in"
 #: src/components/custom-emojis-modal.jsx:412
 msgid "Custom emojis are not available on this server."
 msgstr "Custom emojis are not available on this server."
+
+#. placeholder {0}: e?.message || e
+#: src/components/dislike-reasons.jsx:36
+#: src/pages/foryou.jsx:118
+msgid "Failed: {0}"
+msgstr "Failed: {0}"
+
+#: src/components/dislike-reasons.jsx:46
+msgid "No account accepted the mute"
+msgstr "No account accepted the mute"
+
+#: src/components/dislike-reasons.jsx:48
+msgid "Muted \"{word}\" on {where}"
+msgstr "Muted \"{word}\" on {where}"
+
+#: src/components/dislike-reasons.jsx:69
+msgid "Why?"
+msgstr "Why?"
+
+#: src/components/dislike-reasons.jsx:71
+msgid "Just this post"
+msgstr "Just this post"
+
+#: src/components/dislike-reasons.jsx:72
+msgid "Mute @{acct}"
+msgstr "Mute @{acct}"
+
+#: src/components/dislike-reasons.jsx:75
+msgid "Block"
+msgstr "Block"
+
+#: src/components/dislike-reasons.jsx:86
+msgid "✓ Muted {tag}"
+msgstr "✓ Muted {tag}"
+
+#: src/components/dislike-reasons.jsx:86
+msgid "Mute #{tag}"
+msgstr "Mute #{tag}"
+
+#: src/components/dislike-reasons.jsx:101
+msgid "Select a word or phrase in the post first"
+msgstr "Select a word or phrase in the post first"
+
+#: src/components/dislike-reasons.jsx:104
+msgid "Mute selected text"
+msgstr "Mute selected text"
+
+#: src/components/dislike-reasons.jsx:114
+msgid "Mute a word…"
+msgstr "Mute a word…"
+
+#. placeholder {0}: r.value
+#: src/components/dislike-reasons.jsx:124
+msgid "✓ Muted \"{0}\""
+msgstr "✓ Muted \"{0}\""
 
 #: src/components/drafts.jsx:62
 #: src/pages/settings.jsx:796
@@ -1094,13 +1151,13 @@ msgid "More"
 msgstr ""
 
 #: src/components/edit-profile-sheet.jsx:94
-#: src/components/shortcuts-settings.jsx:376
+#: src/components/shortcuts-settings.jsx:385
 #: src/pages/accounts.jsx:290
 msgid "Move up"
 msgstr ""
 
 #: src/components/edit-profile-sheet.jsx:100
-#: src/components/shortcuts-settings.jsx:392
+#: src/components/shortcuts-settings.jsx:401
 #: src/pages/accounts.jsx:312
 msgid "Move down"
 msgstr ""
@@ -1198,7 +1255,7 @@ msgstr "(session expired)"
 
 #: src/components/fixed-accounts-banner.jsx:88
 #: src/components/fixed-accounts-banner.jsx:96
-#: src/components/nav-menu.jsx:386
+#: src/components/nav-menu.jsx:392
 #: src/pages/login.jsx:30
 #: src/pages/login.jsx:158
 #: src/pages/login.jsx:203
@@ -1307,7 +1364,7 @@ msgid "Import/Export <0>Accounts</0>"
 msgstr "Import/Export <0>Accounts</0>"
 
 #: src/components/import-export-accounts.jsx:128
-#: src/components/shortcuts-settings.jsx:824
+#: src/components/shortcuts-settings.jsx:833
 msgid "Import"
 msgstr ""
 
@@ -1316,7 +1373,7 @@ msgid "Select file…"
 msgstr "Select file…"
 
 #: src/components/import-export-accounts.jsx:151
-#: src/components/shortcuts-settings.jsx:1074
+#: src/components/shortcuts-settings.jsx:1083
 msgid "Export"
 msgstr ""
 
@@ -1345,7 +1402,7 @@ msgid "<0>{key1}</0> then <1>{key2}</1>"
 msgstr "<0>{key1}</0> then <1>{key2}</1>"
 
 #: src/components/keyboard-shortcuts-help.jsx:57
-#: src/components/nav-menu.jsx:434
+#: src/components/nav-menu.jsx:440
 #: src/pages/catchup.jsx:1769
 msgid "Keyboard shortcuts"
 msgstr ""
@@ -1442,10 +1499,10 @@ msgid "<0>Ctrl</0> + <1>Enter</1> or <2>⌘</2> + <3>Enter</3>"
 msgstr ""
 
 #: src/components/keyboard-shortcuts-help.jsx:161
-#: src/components/nav-menu.jsx:397
+#: src/components/nav-menu.jsx:403
 #: src/components/search-form.jsx:208
-#: src/components/shortcuts-settings.jsx:55
-#: src/components/shortcuts-settings.jsx:190
+#: src/components/shortcuts-settings.jsx:56
+#: src/components/shortcuts-settings.jsx:199
 #: src/pages/search.jsx:60
 #: src/pages/search.jsx:532
 msgid "Search"
@@ -1471,6 +1528,7 @@ msgstr ""
 #: src/components/status.jsx:1328
 #: src/components/status.jsx:3225
 #: src/components/status.jsx:3300
+#: src/pages/foryou.jsx:145
 msgid "Boost"
 msgstr ""
 
@@ -1761,23 +1819,23 @@ msgstr ""
 msgid "Open file"
 msgstr "Open file"
 
-#: src/components/modals.jsx:96
+#: src/components/modals.jsx:108
 msgid "Post scheduled"
 msgstr "Post scheduled"
 
-#: src/components/modals.jsx:97
+#: src/components/modals.jsx:109
 msgid "Post published. Check it out."
 msgstr ""
 
-#: src/components/modals.jsx:99
+#: src/components/modals.jsx:111
 msgid "Reply scheduled"
 msgstr "Reply scheduled"
 
-#: src/components/modals.jsx:100
+#: src/components/modals.jsx:112
 msgid "Reply posted. Check it out."
 msgstr ""
 
-#: src/components/modals.jsx:101
+#: src/components/modals.jsx:113
 msgid "Post updated. Check it out."
 msgstr ""
 
@@ -1795,7 +1853,7 @@ msgstr ""
 
 #. js-lingui-explicit-id
 #: src/components/nav-menu.jsx:209
-#: src/components/shortcuts-settings.jsx:145
+#: src/components/shortcuts-settings.jsx:147
 #: src/pages/following.jsx:30
 #: src/pages/following.jsx:238
 #: src/pages/following2.jsx:18
@@ -1809,8 +1867,8 @@ msgid "Catch-up"
 msgstr ""
 
 #: src/components/nav-menu.jsx:223
-#: src/components/shortcuts-settings.jsx:61
-#: src/components/shortcuts-settings.jsx:151
+#: src/components/shortcuts-settings.jsx:62
+#: src/components/shortcuts-settings.jsx:153
 #: src/pages/home.jsx:315
 #: src/pages/mentions.jsx:25
 #: src/pages/mentions.jsx:256
@@ -1821,8 +1879,8 @@ msgid "Mentions"
 msgstr ""
 
 #: src/components/nav-menu.jsx:230
-#: src/components/shortcuts-settings.jsx:52
-#: src/components/shortcuts-settings.jsx:157
+#: src/components/shortcuts-settings.jsx:53
+#: src/components/shortcuts-settings.jsx:159
 #: src/pages/filters.jsx:29
 #: src/pages/home.jsx:100
 #: src/pages/home.jsx:266
@@ -1836,36 +1894,44 @@ msgid "New"
 msgstr ""
 
 #: src/components/nav-menu.jsx:242
-#: src/components/shortcuts-settings.jsx:62
-#: src/components/shortcuts-settings.jsx:163
+#: src/components/shortcuts-settings.jsx:63
+#: src/components/shortcuts-settings.jsx:165
 #: src/pages/engagement.jsx:30
 #: src/pages/engagement.jsx:96
 msgid "Engagement"
 msgstr "Engagement"
 
-#: src/components/nav-menu.jsx:258
-#: src/components/nav-menu.jsx:277
-#: src/components/shortcuts-settings.jsx:63
-#: src/components/shortcuts-settings.jsx:200
+#: src/components/nav-menu.jsx:248
+#: src/components/shortcuts-settings.jsx:64
+#: src/components/shortcuts-settings.jsx:171
+#: src/pages/foryou.jsx:210
+#: src/pages/foryou.jsx:394
+msgid "For You"
+msgstr "For You"
+
+#: src/components/nav-menu.jsx:264
+#: src/components/nav-menu.jsx:283
+#: src/components/shortcuts-settings.jsx:65
+#: src/components/shortcuts-settings.jsx:209
 msgid "Profile"
 msgstr ""
 
-#: src/components/nav-menu.jsx:285
-#: src/components/shortcuts-settings.jsx:57
-#: src/components/shortcuts-settings.jsx:220
+#: src/components/nav-menu.jsx:291
+#: src/components/shortcuts-settings.jsx:58
+#: src/components/shortcuts-settings.jsx:229
 #: src/pages/bookmarks.jsx:12
 #: src/pages/bookmarks.jsx:26
 msgid "Bookmarks"
 msgstr ""
 
-#: src/components/nav-menu.jsx:296
+#: src/components/nav-menu.jsx:302
 #: src/components/text-expander.jsx:215
 msgid "More…"
 msgstr ""
 
-#: src/components/nav-menu.jsx:305
-#: src/components/shortcuts-settings.jsx:58
-#: src/components/shortcuts-settings.jsx:226
+#: src/components/nav-menu.jsx:311
+#: src/components/shortcuts-settings.jsx:59
+#: src/components/shortcuts-settings.jsx:235
 #: src/pages/catchup.jsx:1595
 #: src/pages/catchup.jsx:2255
 #: src/pages/engagement.jsx:178
@@ -1875,7 +1941,7 @@ msgstr ""
 msgid "Likes"
 msgstr ""
 
-#: src/components/nav-menu.jsx:312
+#: src/components/nav-menu.jsx:318
 #: src/pages/account-collections.jsx:70
 #: src/pages/account-collections.jsx:149
 #: src/pages/account-collections.jsx:171
@@ -1884,13 +1950,13 @@ msgstr ""
 msgid "Collections"
 msgstr "Collections"
 
-#: src/components/nav-menu.jsx:319
+#: src/components/nav-menu.jsx:325
 #: src/pages/followed-hashtags.jsx:15
 #: src/pages/followed-hashtags.jsx:45
 msgid "Followed Hashtags"
 msgstr ""
 
-#: src/components/nav-menu.jsx:333
+#: src/components/nav-menu.jsx:339
 #: src/pages/account-statuses.jsx:427
 #: src/pages/filters.jsx:60
 #: src/pages/filters.jsx:101
@@ -1898,58 +1964,58 @@ msgstr ""
 msgid "Filters"
 msgstr ""
 
-#: src/components/nav-menu.jsx:341
+#: src/components/nav-menu.jsx:347
 msgid "Muted users"
 msgstr ""
 
-#: src/components/nav-menu.jsx:349
+#: src/components/nav-menu.jsx:355
 msgid "Muted users…"
 msgstr ""
 
-#: src/components/nav-menu.jsx:356
+#: src/components/nav-menu.jsx:362
 msgid "Blocked users"
 msgstr ""
 
-#: src/components/nav-menu.jsx:364
+#: src/components/nav-menu.jsx:370
 msgid "Blocked users…"
 msgstr ""
 
-#: src/components/nav-menu.jsx:376
+#: src/components/nav-menu.jsx:382
 msgid "Accounts…"
 msgstr ""
 
-#: src/components/nav-menu.jsx:404
-#: src/components/shortcuts-settings.jsx:60
-#: src/components/shortcuts-settings.jsx:183
+#: src/components/nav-menu.jsx:410
+#: src/components/shortcuts-settings.jsx:61
+#: src/components/shortcuts-settings.jsx:192
 #: src/pages/trending.jsx:444
 msgid "Trending"
 msgstr ""
 
-#: src/components/nav-menu.jsx:420
-#: src/components/shortcuts-settings.jsx:176
+#: src/components/nav-menu.jsx:426
+#: src/components/shortcuts-settings.jsx:185
 msgid "Federated"
 msgstr ""
 
-#: src/components/nav-menu.jsx:444
+#: src/components/nav-menu.jsx:450
 msgid "Shortcuts / Columns…"
 msgstr ""
 
-#: src/components/nav-menu.jsx:454
-#: src/components/nav-menu.jsx:468
+#: src/components/nav-menu.jsx:460
+#: src/components/nav-menu.jsx:474
 msgid "Settings…"
 msgstr ""
 
-#: src/components/nav-menu.jsx:498
-#: src/components/nav-menu.jsx:533
-#: src/components/shortcuts-settings.jsx:53
-#: src/components/shortcuts-settings.jsx:169
+#: src/components/nav-menu.jsx:504
+#: src/components/nav-menu.jsx:539
+#: src/components/shortcuts-settings.jsx:54
+#: src/components/shortcuts-settings.jsx:178
 #: src/pages/list.jsx:135
 #: src/pages/lists.jsx:18
 #: src/pages/lists.jsx:54
 msgid "Lists"
 msgstr ""
 
-#: src/components/nav-menu.jsx:506
+#: src/components/nav-menu.jsx:512
 #: src/components/shortcuts.jsx:32
 #: src/pages/list.jsx:147
 msgid "All Lists"
@@ -2155,7 +2221,7 @@ msgstr "Open link?"
 #: src/components/open-link-sheet.jsx:78
 #: src/components/post-embed-modal.jsx:233
 #: src/components/related-actions.jsx:650
-#: src/components/shortcuts-settings.jsx:1183
+#: src/components/shortcuts-settings.jsx:1192
 #: src/components/status.jsx:1677
 #: src/pages/collection.jsx:334
 msgid "Copy"
@@ -2324,7 +2390,7 @@ msgid "Save & close"
 msgstr ""
 
 #: src/components/qr-code-modal.jsx:26
-#: src/components/shortcuts-settings.jsx:857
+#: src/components/shortcuts-settings.jsx:866
 msgid "Scan QR code"
 msgstr "Scan QR code"
 
@@ -2505,7 +2571,7 @@ msgid "Search my posts"
 msgstr "Search my posts"
 
 #: src/components/related-actions.jsx:665
-#: src/components/shortcuts-settings.jsx:1201
+#: src/components/shortcuts-settings.jsx:1210
 #: src/components/status.jsx:1693
 msgid "Sharing doesn't seem to work."
 msgstr ""
@@ -2761,280 +2827,280 @@ msgstr ""
 msgid "See all"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:51
+#: src/components/shortcuts-settings.jsx:52
 msgid "Home / Following"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:54
+#: src/components/shortcuts-settings.jsx:55
 msgid "Public (Local / Federated)"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:56
+#: src/components/shortcuts-settings.jsx:57
 msgid "Account"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:59
+#: src/components/shortcuts-settings.jsx:60
 msgid "Hashtag"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:68
+#: src/components/shortcuts-settings.jsx:70
 msgid "List ID"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:75
+#: src/components/shortcuts-settings.jsx:77
 msgid "Local only"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:80
-#: src/components/shortcuts-settings.jsx:89
-#: src/components/shortcuts-settings.jsx:127
+#: src/components/shortcuts-settings.jsx:82
+#: src/components/shortcuts-settings.jsx:91
+#: src/components/shortcuts-settings.jsx:129
 #: src/pages/login.jsx:207
 msgid "Server"
 msgstr "Server"
 
-#: src/components/shortcuts-settings.jsx:83
-#: src/components/shortcuts-settings.jsx:92
-#: src/components/shortcuts-settings.jsx:130
+#: src/components/shortcuts-settings.jsx:85
+#: src/components/shortcuts-settings.jsx:94
+#: src/components/shortcuts-settings.jsx:132
 msgid "Optional, e.g. mastodon.social"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:98
+#: src/components/shortcuts-settings.jsx:100
 msgid "Search term"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:101
+#: src/components/shortcuts-settings.jsx:103
 msgid "Optional, unless for multi-column mode"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:118
+#: src/components/shortcuts-settings.jsx:120
 msgid "e.g. PixelArt (Max 5, space-separated)"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:122
+#: src/components/shortcuts-settings.jsx:124
 #: src/pages/hashtag.jsx:389
 msgid "Media only"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:260
+#: src/components/shortcuts-settings.jsx:269
 #: src/components/shortcuts.jsx:345
 msgid "Shortcuts"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:268
+#: src/components/shortcuts-settings.jsx:277
 msgid "beta"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:274
+#: src/components/shortcuts-settings.jsx:283
 msgid "Specify a list of shortcuts that'll appear as:"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:280
+#: src/components/shortcuts-settings.jsx:289
 msgid "Floating button"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:285
+#: src/components/shortcuts-settings.jsx:294
 msgid "Tab/Menu bar"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:290
+#: src/components/shortcuts-settings.jsx:299
 msgid "Multi-column"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:357
+#: src/components/shortcuts-settings.jsx:366
 msgid "Not available in current view mode"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:404
+#: src/components/shortcuts-settings.jsx:413
 #: src/components/status.jsx:1826
 #: src/pages/collection.jsx:396
 #: src/pages/list.jsx:205
 msgid "Edit"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:425
+#: src/components/shortcuts-settings.jsx:434
 msgid "Add more than one shortcut/column to make this work."
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:436
+#: src/components/shortcuts-settings.jsx:445
 msgid "No columns yet. Tap on the Add column button."
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:437
+#: src/components/shortcuts-settings.jsx:446
 msgid "No shortcuts yet. Tap on the Add shortcut button."
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:440
+#: src/components/shortcuts-settings.jsx:449
 msgid "Not sure what to add?<0/>Try adding <1>Home / Following and Notifications</1> first."
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:468
+#: src/components/shortcuts-settings.jsx:477
 msgid "Max {SHORTCUTS_LIMIT} columns"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:469
+#: src/components/shortcuts-settings.jsx:478
 msgid "Max {SHORTCUTS_LIMIT} shortcuts"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:483
+#: src/components/shortcuts-settings.jsx:492
 #: src/pages/accounts.jsx:437
 msgid "Import/export"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:493
+#: src/components/shortcuts-settings.jsx:502
 msgid "Add column…"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:494
+#: src/components/shortcuts-settings.jsx:503
 msgid "Add shortcut…"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:541
+#: src/components/shortcuts-settings.jsx:550
 msgid "Specific list is optional. For multi-column mode, list is required, else the column will not be shown."
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:542
+#: src/components/shortcuts-settings.jsx:551
 msgid "For multi-column mode, search term is required, else the column will not be shown."
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:543
+#: src/components/shortcuts-settings.jsx:552
 msgid "Multiple hashtags are supported. Space-separated."
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:612
+#: src/components/shortcuts-settings.jsx:621
 msgid "Edit shortcut"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:612
+#: src/components/shortcuts-settings.jsx:621
 msgid "Add shortcut"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:648
+#: src/components/shortcuts-settings.jsx:657
 msgid "Timeline"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:674
+#: src/components/shortcuts-settings.jsx:683
 msgid "List"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:814
+#: src/components/shortcuts-settings.jsx:823
 msgid "Import/Export <0>Shortcuts</0>"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:832
+#: src/components/shortcuts-settings.jsx:841
 msgid "Paste shortcuts here"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:868
+#: src/components/shortcuts-settings.jsx:877
 msgid "Downloading saved shortcuts from server…"
 msgstr "Downloading saved shortcuts from server…"
 
-#: src/components/shortcuts-settings.jsx:896
+#: src/components/shortcuts-settings.jsx:905
 msgid "Unable to download shortcuts"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:899
+#: src/components/shortcuts-settings.jsx:908
 msgid "Download shortcuts from server"
 msgstr "Download shortcuts from server"
 
-#: src/components/shortcuts-settings.jsx:968
+#: src/components/shortcuts-settings.jsx:977
 msgid "* Exists in current shortcuts"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:973
+#: src/components/shortcuts-settings.jsx:982
 msgid "List may not work if it's from a different account."
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:983
+#: src/components/shortcuts-settings.jsx:992
 msgid "Invalid settings format"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:991
+#: src/components/shortcuts-settings.jsx:1000
 msgid "Append to current shortcuts?"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:994
+#: src/components/shortcuts-settings.jsx:1003
 msgid "Only shortcuts that don’t exist in current shortcuts will be appended."
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1016
+#: src/components/shortcuts-settings.jsx:1025
 msgid "No new shortcuts to import"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1031
+#: src/components/shortcuts-settings.jsx:1040
 msgid "Shortcuts imported. Exceeded max {SHORTCUTS_LIMIT}, so the rest are not imported."
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1032
-#: src/components/shortcuts-settings.jsx:1056
+#: src/components/shortcuts-settings.jsx:1041
+#: src/components/shortcuts-settings.jsx:1065
 msgid "Shortcuts imported"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1042
+#: src/components/shortcuts-settings.jsx:1051
 msgid "Import & append…"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1050
+#: src/components/shortcuts-settings.jsx:1059
 msgid "Override current shortcuts?"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1051
+#: src/components/shortcuts-settings.jsx:1060
 msgid "Import shortcuts?"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1065
+#: src/components/shortcuts-settings.jsx:1074
 msgid "or override…"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1065
+#: src/components/shortcuts-settings.jsx:1074
 msgid "Import…"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1089
+#: src/components/shortcuts-settings.jsx:1098
 msgid "Shortcuts copied"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1092
+#: src/components/shortcuts-settings.jsx:1101
 msgid "Unable to copy shortcuts"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1144
+#: src/components/shortcuts-settings.jsx:1153
 msgid "Saving shortcuts to server…"
 msgstr "Saving shortcuts to server…"
 
-#: src/components/shortcuts-settings.jsx:1151
+#: src/components/shortcuts-settings.jsx:1160
 msgid "Shortcuts saved"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1156
+#: src/components/shortcuts-settings.jsx:1165
 msgid "Unable to save shortcuts"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1159
+#: src/components/shortcuts-settings.jsx:1168
 msgid "Sync to server"
 msgstr "Sync to server"
 
-#: src/components/shortcuts-settings.jsx:1174
+#: src/components/shortcuts-settings.jsx:1183
 msgid "Shortcut settings copied"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1177
+#: src/components/shortcuts-settings.jsx:1186
 msgid "Unable to copy shortcut settings"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1207
+#: src/components/shortcuts-settings.jsx:1216
 msgid "Share"
 msgstr ""
 
 #. placeholder {0}: shortcutsStr.length
-#: src/components/shortcuts-settings.jsx:1213
+#: src/components/shortcuts-settings.jsx:1222
 msgid "{0, plural, one {# character} other {# characters}}"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1225
+#: src/components/shortcuts-settings.jsx:1234
 msgid "Raw Shortcuts JSON"
 msgstr ""
 
-#: src/components/shortcuts-settings.jsx:1238
+#: src/components/shortcuts-settings.jsx:1247
 msgid "Import/export settings from/to server (Very experimental)"
 msgstr "Import/export settings from/to server (Very experimental)"
 
@@ -3165,6 +3231,7 @@ msgstr "Only <0>@{0}</0>"
 #: src/components/status.jsx:1430
 #: src/components/status.jsx:3225
 #: src/components/status.jsx:3298
+#: src/pages/foryou.jsx:145
 msgid "Unboost"
 msgstr ""
 
@@ -3208,6 +3275,7 @@ msgstr ""
 #: src/components/status.jsx:2388
 #: src/components/status.jsx:3317
 #: src/pages/conversation-thread.jsx:136
+#: src/pages/foryou.jsx:157
 msgid "Unlike"
 msgstr ""
 
@@ -3217,6 +3285,7 @@ msgstr ""
 #: src/components/status.jsx:3317
 #: src/components/status.jsx:3318
 #: src/pages/conversation-thread.jsx:136
+#: src/pages/foryou.jsx:157
 msgid "Like"
 msgstr ""
 
@@ -4452,6 +4521,139 @@ msgstr ""
 #: src/pages/list.jsx:117
 msgid "Unable to load posts."
 msgstr ""
+
+#: src/pages/foryou.jsx:51
+msgid "On your \"Always show\" list"
+msgstr "On your \"Always show\" list"
+
+#. placeholder {0}: reason.count
+#: src/pages/foryou.jsx:53
+msgid "{0, plural, one {Shared by # person you follow} other {Shared by # people you follow}}"
+msgstr "{0, plural, one {Shared by # person you follow} other {Shared by # people you follow}}"
+
+#: src/pages/foryou.jsx:60
+msgid "{likes} likes, from an account with {followers} followers"
+msgstr "{likes} likes, from an account with {followers} followers"
+
+#: src/pages/foryou.jsx:64
+msgid "{likes} likes"
+msgstr "{likes} likes"
+
+#: src/pages/foryou.jsx:67
+msgid "From someone you often reply to, boost or like"
+msgstr "From someone you often reply to, boost or like"
+
+#. placeholder {0}: reason.posts
+#: src/pages/foryou.jsx:69
+msgid "{0, plural, one {From a quiet poster: # post today} other {From a quiet poster: # posts today}}"
+msgstr "{0, plural, one {From a quiet poster: # post today} other {From a quiet poster: # posts today}}"
+
+#: src/pages/foryou.jsx:76
+msgid "{feed} feed, {likes} likes"
+msgstr "{feed} feed, {likes} likes"
+
+#: src/pages/foryou.jsx:80
+msgid "About {topics}"
+msgstr "About {topics}"
+
+#: src/pages/foryou.jsx:83
+msgid "A random post, to check the rules against chance"
+msgstr "A random post, to check the rules against chance"
+
+#: src/pages/foryou.jsx:166
+msgid "✓ Not for me"
+msgstr "✓ Not for me"
+
+#: src/pages/foryou.jsx:168
+#: src/pages/foryou.jsx:557
+msgid "Not for me"
+msgstr "Not for me"
+
+#: src/pages/foryou.jsx:177
+msgid "Other languages"
+msgstr "Other languages"
+
+#: src/pages/foryou.jsx:178
+msgid "Muted or blocked accounts"
+msgstr "Muted or blocked accounts"
+
+#: src/pages/foryou.jsx:179
+msgid "Your filters"
+msgstr "Your filters"
+
+#: src/pages/foryou.jsx:180
+msgid "Muted words"
+msgstr "Muted words"
+
+#: src/pages/foryou.jsx:181
+msgid "Shown in an earlier digest"
+msgstr "Shown in an earlier digest"
+
+#: src/pages/foryou.jsx:403
+msgid "Reload"
+msgstr "Reload"
+
+#: src/pages/foryou.jsx:412
+msgid "Failed to load: {error}"
+msgstr "Failed to load: {error}"
+
+#: src/pages/foryou.jsx:418
+msgid "Reading posts from your accounts and feeds…"
+msgstr "Reading posts from your accounts and feeds…"
+
+#: src/pages/foryou.jsx:426
+msgid "Your previous digest."
+msgstr "Your previous digest."
+
+#. placeholder {0}: new Date(digest.cutoff).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit', })
+#: src/pages/foryou.jsx:430
+msgid "Posts since {0}."
+msgstr "Posts since {0}."
+
+#: src/pages/foryou.jsx:442
+msgid "Posts from the last 24 hours."
+msgstr "Posts from the last 24 hours."
+
+#. placeholder {0}: s.instance
+#: src/pages/foryou.jsx:449
+msgid "{0} not loaded. Log back in to this account to include it."
+msgstr "{0} not loaded. Log back in to this account to include it."
+
+#: src/pages/foryou.jsx:463
+msgid "Nothing new since your last digest."
+msgstr "Nothing new since your last digest."
+
+#: src/pages/foryou.jsx:467
+msgid "Show the previous digest"
+msgstr "Show the previous digest"
+
+#: src/pages/foryou.jsx:514
+msgid "That's all for now."
+msgstr "That's all for now."
+
+#: src/pages/foryou.jsx:521
+msgid "Removed by filters:"
+msgstr "Removed by filters:"
+
+#: src/pages/foryou.jsx:532
+msgid "{instance}: {homeCount} home posts read, back {homeHours} h"
+msgstr "{instance}: {homeCount} home posts read, back {homeHours} h"
+
+#: src/pages/foryou.jsx:542
+msgid "How each rule is doing"
+msgstr "How each rule is doing"
+
+#: src/pages/foryou.jsx:548
+msgid "Rule"
+msgstr "Rule"
+
+#: src/pages/foryou.jsx:551
+msgid "Shown"
+msgstr "Shown"
+
+#: src/pages/foryou.jsx:554
+msgid "Interesting"
+msgstr "Interesting"
 
 #: src/pages/hashtag.jsx:57
 msgid "{hashtagTitle} (Media only) on {instance}"

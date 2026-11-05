@@ -3,39 +3,21 @@ import './foryou-lab.css';
 import { useEffect, useMemo, useReducer, useRef, useState } from 'preact/hooks';
 import { useSnapshot } from 'valtio';
 
+import DislikeReasons from '../components/dislike-reasons';
 import FixedAccountsBanner from '../components/fixed-accounts-banner';
 import Link from '../components/link';
 import Loader from '../components/loader';
 import NavMenu from '../components/nav-menu';
 import Status from '../components/status';
 import { api } from '../utils/api';
-import { getOtherNetworkAccounts } from '../utils/bluesky';
-import { idToAtUri } from '../utils/bluesky/convert';
-import {
-  isAlwaysList,
-  LAB_FEEDS,
-  WINDOW_MS,
-  affinityFromActivity,
-  authorKey,
-  buildPool,
-  runLab,
-  scoreRules,
-} from '../utils/foryou-lab';
-import { muteWordEverywhere } from '../utils/mute-word';
-import showToast from '../utils/show-toast';
+import { WINDOW_MS, runLab, scoreRules } from '../utils/foryou-lab';
+import { forYouSources, loadCandidates } from '../utils/foryou-load';
 import states, { saveStatus } from '../utils/states';
 import useTitle from '../utils/useTitle';
 
 // Experiment page, reached only by typing its URL. Its strings are plain
 // text, not lingui macros, so they need no catalog entries.
 
-// A Bluesky home page of 40 covered about two minutes on 2026-11-05 (30
-// pages, 1 hour). Mastodon servers keep 800 home posts, so its walk ends
-// sooner by itself.
-const HOME_PAGES = 100;
-const FEED_PAGES = 4;
-const ACTIVITY_PAGES = 3;
-const PROFILE_CONCURRENCY = 6;
 const VERDICTS_KEY = 'foryouLabVerdicts';
 const REASONS_KEY = 'foryouLabReasons';
 
@@ -68,294 +50,6 @@ function saveReasons(reasons) {
   } catch (e) {}
 }
 
-function hashtagsOf(status) {
-  const names = (status.tags || []).map((t) => t.name);
-  return [...new Set(names.filter(Boolean).map((n) => n.toLowerCase()))];
-}
-
-// The reasons offered after "Not for me". Each one but "Just this post" also
-// acts: it mutes or blocks the author on the post's network, or mutes a word
-// on every logged-in account, so the dislike and the fix are one tap.
-function DislikeReasons({ candidate, masto, given, onReason }) {
-  const { status } = candidate;
-  const account = status.account;
-  const [busy, setBusy] = useState(false);
-  const [word, setWord] = useState('');
-  const selection = useRef('');
-  const done = (type, value) =>
-    given.some((r) => r.type === type && r.value === value);
-
-  async function act(type, value, action) {
-    if (busy || done(type, value)) return;
-    setBusy(true);
-    try {
-      if (action) await action();
-      onReason({ type, value });
-    } catch (e) {
-      console.error(e);
-      showToast(`Failed: ${e?.message || e}`);
-    }
-    setBusy(false);
-  }
-
-  async function muteWord(value) {
-    const word = (value || '').trim();
-    if (!word) return;
-    await act('mute-word', word, async () => {
-      const instances = await muteWordEverywhere(word, { expiresIn: 0 });
-      if (!instances.length) throw new Error('no account accepted the mute');
-      showToast(`Muted "${word}" on ${instances.join(', ')}`);
-    });
-  }
-
-  const button = (type, value, label, action) => (
-    <button
-      type="button"
-      class={done(type, value) ? '' : 'light'}
-      disabled={busy}
-      onClick={() => act(type, value, action)}
-    >
-      {done(type, value) ? `✓ ${label}` : label}
-    </button>
-  );
-
-  return (
-    <div class="lab-reasons">
-      <span class="insignificant">Why?</span>
-      {button('post', '', 'Just this post')}
-      {button('mute-author', account?.acct, `Mute @${account?.acct}`, () =>
-        masto.v1.accounts.$select(account.id).mute(),
-      )}
-      {button('block-author', account?.acct, 'Block', () =>
-        masto.v1.accounts.$select(account.id).block(),
-      )}
-      {hashtagsOf(status).map((tag) => (
-        <button
-          key={tag}
-          type="button"
-          class={done('mute-word', tag) ? '' : 'light'}
-          disabled={busy}
-          onClick={() => muteWord(tag)}
-        >
-          {done('mute-word', tag) ? `✓ Muted ${tag}` : `Mute #${tag}`}
-        </button>
-      ))}
-      <button
-        type="button"
-        class="light"
-        disabled={busy}
-        // Read the selection before the tap can clear it
-        onPointerDown={() => {
-          selection.current = String(window.getSelection() || '').trim();
-        }}
-        onClick={() => {
-          const text =
-            selection.current || String(window.getSelection() || '').trim();
-          if (text) muteWord(text);
-          else showToast('Select a word or phrase in the post first');
-        }}
-      >
-        Mute selected text
-      </button>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          muteWord(word).then(() => setWord(''));
-        }}
-      >
-        <input
-          type="text"
-          placeholder="Mute a word…"
-          value={word}
-          onInput={(e) => setWord(e.target.value)}
-          disabled={busy}
-        />
-      </form>
-      {given
-        .filter(
-          (r) =>
-            r.type === 'mute-word' && !hashtagsOf(status).includes(r.value),
-        )
-        .map((r) => (
-          <span key={r.value} class="insignificant">
-            ✓ Muted "{r.value}"
-          </span>
-        ))}
-    </div>
-  );
-}
-
-// Reads pages until a page ends with an item older than the cutoff (when
-// `cutoff` is set), the iterator ends, or `pages` pages are read. One old item
-// mid-page, such as a backdated post, does not stop the walk, and neither does
-// an empty page: the Bluesky facade filters pages after fetching them. Custom
-// feeds are not chronological, so they pass no cutoff. `stats`, when given,
-// receives the page count and the reason the walk stopped.
-async function collect(iterator, { pages, cutoff, stats = {} }) {
-  const items = [];
-  stats.pages = 0;
-  stats.stop = 'page cap';
-  for (let i = 0; i < pages; i++) {
-    const { done, value } = await iterator.next();
-    if (done) {
-      stats.stop = 'end of timeline';
-      break;
-    }
-    stats.pages++;
-    if (!value?.length) continue;
-    items.push(...value);
-    if (cutoff && Date.parse(value[value.length - 1].createdAt) < cutoff) {
-      stats.stop = 'cutoff';
-      break;
-    }
-  }
-  return items;
-}
-
-async function mapLimit(items, limit, fn) {
-  const queue = [...items];
-  await Promise.all(
-    Array.from({ length: limit }, async () => {
-      while (queue.length) await fn(queue.shift());
-    }),
-  );
-}
-
-async function loadSource({ masto, instance }, cutoff, log) {
-  const self = await masto.v1.accounts.verifyCredentials();
-  log(`${instance}: reading home timeline`);
-  const homeWalk = {};
-  const home = await collect(
-    masto.v1.timelines.home.list({ limit: 40 }).values(),
-    { pages: HOME_PAGES, cutoff, stats: homeWalk },
-  );
-  const entries = home.map((item) => ({ item, origin: 'home', instance }));
-  // Hours of home timeline read, from the last item reached; under 24 means
-  // the walk ended before the window did
-  const homeHours = home.length
-    ? Math.round((Date.now() - Date.parse(home.at(-1).createdAt)) / 36e5)
-    : 0;
-
-  let lists = [];
-  let alwaysList = null;
-  try {
-    const all = await masto.v1.lists.list();
-    lists = all.filter((l) => l._feed && LAB_FEEDS.has(idToAtUri(l.id)));
-    alwaysList = all.find(isAlwaysList) || null;
-  } catch (e) {
-    console.error(e);
-  }
-  let always = null;
-  if (alwaysList) {
-    log(`${instance}: reading list "${alwaysList.title}"`);
-    try {
-      const items = await collect(
-        masto.v1.timelines.list
-          .$select(alwaysList.id)
-          .list({ limit: 40 })
-          .values(),
-        { pages: FEED_PAGES, cutoff },
-      );
-      always = { count: items.length };
-      for (const item of items) {
-        entries.push({ item, origin: 'always', instance });
-      }
-    } catch (e) {
-      console.error(e);
-      always = { count: 0, failed: true };
-    }
-  }
-  const feeds = [];
-  for (const list of lists) {
-    const { strangers } = LAB_FEEDS.get(idToAtUri(list.id));
-    log(`${instance}: reading feed "${list.title}"`);
-    try {
-      const items = await collect(
-        masto.v1.timelines.list.$select(list.id).list({ limit: 50 }).values(),
-        { pages: FEED_PAGES },
-      );
-      feeds.push({ title: list.title, count: items.length });
-      for (const item of items) {
-        entries.push({
-          item,
-          origin: `feed: ${list.title}`,
-          instance,
-          strangers,
-        });
-      }
-    } catch (e) {
-      console.error(e);
-      feeds.push({ title: list.title, count: 0, failed: true });
-    }
-  }
-
-  // Bluesky muted words, which the facade lists as filters
-  let mutedWords = [];
-  if (self._bluesky) {
-    try {
-      mutedWords = (await masto.v1.filters.list()).map((f) => ({
-        value: f.title,
-        expiresAt: f.expiresAt,
-      }));
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  log(`${instance}: reading your recent posts and likes`);
-  const [own, likes] = await Promise.all([
-    collect(
-      masto.v1.accounts.$select(self.id).statuses.list({ limit: 40 }).values(),
-      { pages: ACTIVITY_PAGES },
-    ).catch(() => []),
-    collect(masto.v1.favourites.list({ limit: 40 }).values(), {
-      pages: ACTIVITY_PAGES,
-    }).catch(() => []),
-  ]);
-
-  return {
-    instance,
-    masto,
-    selfKey: authorKey(instance, self),
-    entries,
-    mutedWords,
-    homeCount: home.length,
-    homeHours,
-    homeWalk,
-    always,
-    feeds,
-    own: own.map((status) => ({ instance, status })),
-    likes: likes.map((status) => ({ instance, status })),
-  };
-}
-
-// Follower counts for every author in the pool. Mastodon statuses carry them;
-// Bluesky post authors are partial profiles, so those are fetched.
-async function loadFollowers(pool, sources, log) {
-  const followers = new Map();
-  const missing = new Map();
-  for (const { author, instance, status } of pool) {
-    if (followers.has(author) || missing.has(author)) continue;
-    const { account } = status;
-    if (account?._partial) missing.set(author, { instance, id: account.id });
-    else followers.set(author, account?.followersCount);
-  }
-  const mastoByInstance = new Map(sources.map((s) => [s.instance, s.masto]));
-  let done = 0;
-  await mapLimit([...missing], PROFILE_CONCURRENCY, async ([author, a]) => {
-    try {
-      const account = await mastoByInstance
-        .get(a.instance)
-        .v1.accounts.$select(a.id)
-        .fetch();
-      followers.set(author, account.followersCount);
-    } catch (e) {}
-    done++;
-    if (done % 25 === 0) log(`Fetched ${done}/${missing.size} profiles`);
-  });
-  return followers;
-}
-
 function fmt(n, digits = 2) {
   return n === null || n === undefined ? '–' : Number(n.toFixed(digits));
 }
@@ -375,12 +69,10 @@ function ForYouLab() {
 
   const sources = useRef(null);
   if (sources.current === null) {
-    sources.current = [
+    sources.current = forYouSources(
       { masto, instance },
-      ...(snapStates.settings.mergedTimeline
-        ? getOtherNetworkAccounts().map((account) => api({ account }))
-        : []),
-    ];
+      snapStates.settings.mergedTimeline,
+    );
   }
 
   useEffect(() => {
@@ -393,40 +85,8 @@ function ForYouLab() {
     (async () => {
       const cutoff = Date.now() - WINDOW_MS;
       try {
-        // One account failing, such as an expired Bluesky session, skips
-        // that account instead of failing the whole lab
-        const settled = await Promise.allSettled(
-          sources.current.map((s) => loadSource(s, cutoff, log)),
-        );
-        const loaded = [];
-        const failed = [];
-        settled.forEach((r, i) => {
-          if (r.status === 'fulfilled') {
-            loaded.push(r.value);
-          } else {
-            const { instance } = sources.current[i];
-            const message = String(r.reason?.message || r.reason);
-            failed.push({ instance, failed: message });
-            log(`${instance}: failed (${message}), skipped`);
-          }
-        });
-        if (!loaded.length) {
-          throw new Error(failed.map((f) => f.failed).join('; '));
-        }
-        const pool = buildPool(
-          loaded.flatMap((s) => s.entries),
-          {
-            cutoff,
-            selfKeys: new Set(loaded.map((s) => s.selfKey)),
-            mutedWords: loaded.flatMap((s) => s.mutedWords),
-          },
-        );
-        log(`Pool: ${pool.length} posts. Reading follower counts`);
-        const followers = await loadFollowers(pool, loaded, log);
-        const affinity = affinityFromActivity({
-          ownStatuses: loaded.flatMap((s) => s.own),
-          likes: loaded.flatMap((s) => s.likes),
-        });
+        const { loaded, failed, pool, followers, affinity } =
+          await loadCandidates(sources.current, { cutoff, log });
         const seed = Math.floor(Math.random() * 1e9);
         const result = runLab(pool, { followers, affinity, seed });
         const byKey = new Map(pool.map((c) => [c.key, c]));
@@ -699,7 +359,7 @@ function ForYouLab() {
                       </div>
                       {verdict === 'down' && (
                         <DislikeReasons
-                          candidate={c}
+                          status={c.status}
                           masto={lab.mastoByInstance.get(c.instance)}
                           given={reasons[key] || []}
                           onReason={(reason) => addReason(key, reason)}
@@ -715,7 +375,8 @@ function ForYouLab() {
                           {f.authorPostsToday}
                           {f.topics.length
                             ? ` · ${f.topics.join(', ')}`
-                            : ''} · {[...c.origins].join(', ')}
+                            : ''} ·{' '}
+                          {[...c.origins].join(', ')}
                         </p>
                       )}
                     </li>

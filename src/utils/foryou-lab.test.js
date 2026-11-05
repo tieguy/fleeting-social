@@ -176,3 +176,60 @@ describe('feeds and the "Always show" list', () => {
     expect(picks).toHaveLength(4);
   });
 });
+
+describe('buildPool filter counts', () => {
+  const now = Date.parse('2026-11-05T12:00:00Z');
+  const status = (id, extra = {}) => ({
+    id,
+    content: '<p>Some English text</p>',
+    language: 'en',
+    account: { id: 'a', acct: 'a' },
+    createdAt: new Date(now - 36e5).toISOString(),
+    ...extra,
+  });
+  const entry = (item) => ({ item, origin: 'home', instance: 'i' });
+
+  it('counts each removed post once, by filter', () => {
+    const removed = {};
+    buildPool(
+      [
+        entry(status('r1', { inReplyToId: 'x' })),
+        entry(status('r1', { inReplyToId: 'x' })),
+        entry(status('de', { language: 'de' })),
+        entry(status('w', { content: '<p>crypto news</p>' })),
+        entry(status('ok')),
+      ],
+      {
+        cutoff: now - 24 * 36e5,
+        mutedWords: [{ value: 'crypto' }],
+        removed,
+      },
+    );
+    expect(
+      Object.fromEntries(Object.entries(removed).map(([k, v]) => [k, [...v]])),
+    ).toEqual({
+      reply: ['i/r1'],
+      language: ['i/de'],
+      mutedWord: ['i/w'],
+    });
+  });
+
+  it('does not count a post that another item brought in', () => {
+    const removed = {};
+    const post = status('p');
+    const pool = buildPool(
+      [
+        // A boost by a muted account, then the post itself
+        entry({
+          id: 'boost',
+          account: { id: 'm', acct: 'm', _viewer: { muted: true } },
+          reblog: post,
+        }),
+        entry(post),
+      ],
+      { cutoff: now - 24 * 36e5, removed },
+    );
+    expect(pool.map((c) => c.key)).toEqual(['i/p']);
+    expect([...(removed.muted || [])]).toEqual([]);
+  });
+});
