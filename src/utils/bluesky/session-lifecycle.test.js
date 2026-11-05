@@ -5,7 +5,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const atproto = vi.hoisted(() => {
-  const state = { agents: [], nextResumeImpl: null };
+  const state = {
+    agents: [],
+    nextResumeImpl: null,
+    fetchStatus: null,
+    refreshImpl: null,
+  };
   class FakeAtpAgent {
     constructor({ persistSession }) {
       this.persistSession = persistSession;
@@ -29,6 +34,14 @@ const atproto = vi.hoisted(() => {
     async resumeSession(session) {
       this.resumeCalls.push(session);
       return this.resumeImpl(session);
+    }
+    // Default response for requests: OK. Tests set state.fetchStatus.
+    async fetchHandler() {
+      return { status: state.fetchStatus || 200 };
+    }
+    async refreshSession() {
+      if (state.refreshImpl) return state.refreshImpl.call(this);
+      this.persistSession?.('update', this.session);
     }
     // Simulate a mid-session refresh failure (revoked/expired refresh token)
     expireInFlight() {
@@ -70,6 +83,8 @@ function makeClient(overrides = {}) {
 beforeEach(() => {
   atproto.state.agents.length = 0;
   atproto.state.nextResumeImpl = null;
+  atproto.state.fetchStatus = null;
+  atproto.state.refreshImpl = null;
 });
 
 describe('password session lifecycle', () => {
@@ -182,5 +197,90 @@ describe('password session lifecycle', () => {
     // Same dead token still in the store → fail fast, no resume retry
     await expect(client._ready()).rejects.toThrow(/session has expired/i);
     expect(atproto.state.agents[0].resumeCalls).toHaveLength(1);
+  });
+});
+
+describe('proving a session dead after a 401', () => {
+  // A refresh failure the real agent treats as transient: it keeps the
+  // session and fires 'network-error'
+  function refreshRejects(status) {
+    return async function () {
+      this.persistSession?.('network-error', this.session);
+      const e = new Error('refused');
+      e.status = status;
+      throw e;
+    };
+  }
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+
+  async function setup({ refreshImpl, stored = { current: sess('R1') } }) {
+    const onAuthExpired = vi.fn();
+    const client = makeClient({
+      session: stored.current,
+      getStoredSession: () => stored.current,
+      onAuthExpired,
+    });
+    await client._ready();
+    const [agent] = atproto.state.agents;
+    atproto.state.fetchStatus = 401;
+    atproto.state.refreshImpl = refreshImpl;
+    return { client, agent, onAuthExpired, stored };
+  }
+
+  it('marks auth expired when the server refuses the refresh token', async () => {
+    const { client, agent, onAuthExpired } = await setup({
+      refreshImpl: refreshRejects(400),
+    });
+    await agent.fetchHandler('/xrpc/app.bsky.feed.getTimeline');
+    await flush();
+    expect(onAuthExpired).toHaveBeenCalledTimes(1);
+    await expect(client._ready()).rejects.toThrow(/session has expired/i);
+  });
+
+  it('does not mark auth expired on a network failure, 429 or 5xx', async () => {
+    for (const status of [undefined, 429, 502]) {
+      atproto.state.agents.length = 0;
+      const { agent, onAuthExpired } = await setup({
+        refreshImpl: refreshRejects(status),
+      });
+      await agent.fetchHandler('/xrpc/x');
+      await flush();
+      expect(onAuthExpired).not.toHaveBeenCalled();
+    }
+  });
+
+  it('does not mark auth expired when the refresh succeeds', async () => {
+    const { agent, onAuthExpired } = await setup({ refreshImpl: null });
+    await agent.fetchHandler('/xrpc/x');
+    await flush();
+    expect(onAuthExpired).not.toHaveBeenCalled();
+  });
+
+  it('does not mark auth expired when the store holds a newer token', async () => {
+    const stored = { current: sess('R1') };
+    const { agent, onAuthExpired } = await setup({
+      refreshImpl: async function () {
+        stored.current = sess('R2');
+        return refreshRejects(400).call(this);
+      },
+      stored,
+    });
+    await agent.fetchHandler('/xrpc/x');
+    await flush();
+    expect(onAuthExpired).not.toHaveBeenCalled();
+  });
+
+  it('checks at most once a minute', async () => {
+    let refreshes = 0;
+    const { agent } = await setup({
+      refreshImpl: async function () {
+        refreshes++;
+      },
+    });
+    await agent.fetchHandler('/xrpc/x');
+    await flush();
+    await agent.fetchHandler('/xrpc/x');
+    await flush();
+    expect(refreshes).toBe(1);
   });
 });

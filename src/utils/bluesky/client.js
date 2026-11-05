@@ -170,6 +170,19 @@ export function createBlueskyClient({
           // the next request retries the refresh
         },
       });
+      // A response that is still 401 after the agent's own refresh attempt
+      // can mean the agent kept a session the server no longer accepts: it
+      // treats every refresh failure other than 401, ExpiredToken and
+      // InvalidToken as transient. proveSession() settles it.
+      const manager = agent.sessionManager;
+      if (typeof manager?.fetchHandler === 'function') {
+        const inner = manager.fetchHandler.bind(manager);
+        manager.fetchHandler = async (url, init) => {
+          const res = await inner(url, init);
+          if (res.status === 401) checkSession();
+          return res;
+        };
+      }
     }
     if (agent.hasSession) return;
     // Always resume from the *stored* session, not the snapshot this client
@@ -188,6 +201,43 @@ export function createBlueskyClient({
       });
     }
     await resumePromise;
+  }
+
+  // Proves a session dead with one explicit refresh, at most once a minute.
+  // Only the server refusing the refresh token counts: a network failure, a
+  // rate limit (429) or a server error (5xx) proves nothing. A successful
+  // refresh persists an 'update', which also clears authExpired. A newer
+  // token in the store (another tab, a fresh login) wins over the failure.
+  const SESSION_CHECK_INTERVAL = 60 * 1000;
+  let sessionCheck = null;
+  let lastSessionCheck = 0;
+  function checkSession() {
+    if (sessionCheck) return sessionCheck;
+    if (Date.now() - lastSessionCheck < SESSION_CHECK_INTERVAL) return null;
+    lastSessionCheck = Date.now();
+    sessionCheck = proveSession().finally(() => {
+      sessionCheck = null;
+    });
+    return sessionCheck;
+  }
+  async function proveSession() {
+    const held = agent?.session;
+    // No session held: the 'expired' handler already decided
+    if (!held?.refreshJwt) return;
+    try {
+      await agent.sessionManager.refreshSession();
+    } catch (e) {
+      const status = e?.status;
+      if (!(status >= 400 && status < 500) || status === 429) return;
+      // A 401 refusal already fired 'expired' and dropped the session
+      if (!agent.session) return;
+      const stored = getStoredSession?.();
+      if (stored?.refreshJwt && stored.refreshJwt !== held.refreshJwt) return;
+      deadRefreshJwt = held.refreshJwt;
+      agent.sessionManager.session = undefined;
+      resumePromise = null;
+      onAuthExpired?.();
+    }
   }
 
   // Adopt a token rotation persisted by another tab/window (no network).
