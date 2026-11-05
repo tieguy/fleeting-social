@@ -10,6 +10,10 @@
 	root * /srv/current
 	# Generated from the build's _headers file by fleeting-deploy.sh
 	import /srv/headers.caddy
+	# The app uses hash routing, so /foryou is not a file. Send a typed
+	# /foryou to the route. Other missing paths stay a plain 404, which the
+	# service worker's stale-shell recovery depends on.
+	redir /foryou /#/foryou
 	file_server {
 		hide _headers headers.caddy
 	}
