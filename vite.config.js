@@ -102,6 +102,11 @@ export default defineConfig(({ command }) => {
     },
     server: {
       host: true,
+      // The Fleeting service (service/), run with `npm run service:dev`
+      proxy: {
+        '/fleeting-api':
+          process.env.FLEETING_SERVICE_DEV_URL || 'http://localhost:8787',
+      },
       watch: {
         awaitWriteFinish: {
           pollInterval: 1000,

@@ -25,7 +25,8 @@
     "postinstall": "node scripts/generate-icons.js && npx exifreader build",
     "generate-icons": "node scripts/generate-icons.js",
     "test:unit": "vitest run",
-    "extract": "lingui extract"
+    "extract": "lingui extract",
+    "service:dev": "cd service && FLEETING_SERVICE_RP_ID=localhost FLEETING_SERVICE_ORIGIN=http://localhost:5173 FLEETING_SERVICE_DATA=.data FLEETING_SERVICE_PORT=8787 node server.js"
   },
   "dependencies": {
     "@atproto/api": "^0.20.27",
@@ -39,6 +40,7 @@
     "@justinribeiro/lite-youtube": "~1.9.0",
     "@lingui/detect-locale": "~6.4.0",
     "@lingui/react": "~6.4.0",
+    "@simplewebauthn/browser": "^14.0.0",
     "@szhsin/react-menu": "~4.5.2",
     "chroma-js": "~3.2.0",
     "compare-versions": "~6.1.1",

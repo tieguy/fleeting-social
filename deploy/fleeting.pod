@@ -1,0 +1,13 @@
+# The Fleeting pod: Caddy (fleeting.container) and the service
+# (fleeting-service.container) share its network namespace, so Caddy
+# reaches the service on localhost:8081. Only Caddy's port is published.
+#
+# A pod, not a private Podman network: a rootless bridge network needs
+# netavark's nftables driver, and deepthought has no `nft`.
+
+[Pod]
+PodName=fleeting
+PublishPort=127.0.0.1:8085:8080
+# Set on the pod because Podman refuses --userns on a container in a pod.
+# The service writes its data files as the host user.
+UserNS=keep-id

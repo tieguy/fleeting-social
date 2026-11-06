@@ -1,6 +1,6 @@
 # fleeting-social — developer notes
 
-Last verified: 2026-11-05
+Last verified: 2026-11-06
 
 fleeting-social is a fork of [Phanpy](https://github.com/cheeaun/phanpy) (a Mastodon web client) that adds native Bluesky (AT Protocol) support and interweaves the two networks. Most of the codebase is stock Phanpy; the fork-specific machinery lives under `src/utils/bluesky/` plus a handful of merge/filter helpers.
 
@@ -106,10 +106,15 @@ redirects it. It is in the nav menu and is a shortcut type.
   the post keys each filter dropped. The page adds the posts that an
   earlier digest showed.
 - **State.** `src/utils/foryou-store.js` is the only module that knows
-  where last read, the digests shown and the verdicts live. It uses
-  localStorage key `foryouState` and has an async interface, so the
-  deepthought service can replace it. Last read is recorded when the end
-  of a non-empty digest scrolls into view.
+  where last read, the digests shown and the verdicts live: the Fleeting
+  service (see below), so every device sees the same state. It sends
+  operations, never the whole state. A device that still has the old
+  localStorage key `foryouState` uploads it once, and the service merges
+  it. Last read is recorded when the end of a non-empty digest scrolls
+  into view. When the device is not unlocked, the page shows
+  `src/components/service-unlock.jsx`; when the service does not answer,
+  it shows an error and "Try again". There is no fallback to browser
+  storage.
 - **Verdicts.** A like, boost or reply on a digest post counts as
   "interesting" for the rule that took it; "Not for me" counts against
   it. The page watches `states.statuses` for `favourited` and `reblogged`
@@ -120,7 +125,44 @@ redirects it. It is in the nav menu and is a shortcut type.
 - **Reasons.** `src/components/dislike-reasons.jsx` holds the "Not for
   me" reasons for both the page and the lab.
 
-`tests/foryou.spec.js` drives the page against a stubbed Mastodon server.
+`tests/foryou.spec.js` drives the page against a stubbed Mastodon server and
+a stub of the service that applies the service's own operations.
+
+## Fleeting service
+
+`service/` is a small Node HTTP service on deepthought, at `/fleeting-api/`
+on the app's own origin. It keeps the For You state for every device. The
+design plan is `docs/design-plans/2026-11-05-deepthought-service.md`; job 2
+of that plan (account sessions) is not built yet.
+
+- **Modules.** `server.js` reads the configuration
+  (`FLEETING_SERVICE_RP_ID`, `FLEETING_SERVICE_ORIGIN`,
+  `FLEETING_SERVICE_DATA`, `FLEETING_SERVICE_PORT`). `app.js` holds the
+  routes, `auth.js` the passkeys, setup code and device cookies,
+  `foryou.js` the pure For You operations (`addDigest`, `addVerdict`,
+  `importState`, with the caps), and `store.js` the JSON files. Its one
+  dependency is `@simplewebauthn/server`, in `service/package.json`. The
+  app uses `@simplewebauthn/browser`, lazy-loaded from
+  `src/utils/fleeting-service.js`.
+- **Authentication.** A passkey is the only proof of identity. The first
+  passkey registers with a one-time setup code that the service writes to
+  its log when it starts with no passkey (`journalctl --user -u
+  fleeting-service`). The code works once, for 15 minutes, and closes
+  after 10 wrong tries. Each other device unlocks with the passkey and
+  gets an HttpOnly, `SameSite=Strict` device cookie for one year. A
+  request whose `Sec-Fetch-Site` is present and not `same-origin` gets
+  403. The Accounts sheet can add another passkey. `admin.js` in the
+  container lists and revokes devices.
+- **Data.** JSON files in `~/containers/volumes/fleeting-service/data/`,
+  directory mode 700 and files mode 600: `devices.json` (passkeys and the
+  SHA-256 hashes of device tokens) and `foryou.json`. Recovery when every
+  passkey is lost: delete the passkeys from `devices.json` and restart
+  the service, which then logs a new setup code.
+- **Development.** `npm ci --prefix service`, then `npm run service:dev`
+  runs it on port 8787 with RP ID `localhost`; the Vite dev server proxies
+  `/fleeting-api` to it. `tests/service-passkey.spec.js` starts the
+  service itself and uses Chromium's virtual authenticator, so it runs in
+  the `Chromium` Playwright project only.
 
 ## Quote without attribution
 
@@ -269,10 +311,11 @@ counts them, and `maxHashes` stops meaning anything.
 
 ## Deployment
 
-Fleeting is single-user and served only on the operator's tailnet, from `deepthought`, at `https://fleeting.peafowl-polaris.ts.net`. The files are in `deploy/`; on the host they are installed as plain copies (`~/.local/bin/fleeting-deploy`, `~/.config/containers/systemd/fleeting.container`, `~/.config/systemd/user/fleeting-deploy.{service,timer}`, `~/containers/volumes/fleeting/Caddyfile`), so a change to one of them is copied over by hand.
+Fleeting is single-user and served only on the operator's tailnet, from `deepthought`, at `https://fleeting.peafowl-polaris.ts.net`. The files are in `deploy/`; on the host they are installed as plain copies (`~/.local/bin/fleeting-deploy`, `~/.config/containers/systemd/fleeting.{container,pod}`, `~/.config/containers/systemd/fleeting-service.container`, `~/.config/systemd/user/fleeting-deploy.{service,timer}`, `~/containers/volumes/fleeting/Caddyfile`), so a change to one of them is copied over by hand.
 
 - **Serving.** A Caddy Quadlet serves `~/containers/volumes/fleeting/site/current` on `127.0.0.1:8085`, and `tailscale serve --service=svc:fleeting` terminates TLS in front of it. Missing files get a plain 404, which the service worker's stale-shell recovery relies on.
-- **Deploys are pulls.** `fleeting-deploy.timer` runs every 10 minutes. The script compares the head of `main` on GitHub with `site/deployed-sha` and does nothing if they match. Otherwise it builds that commit in a clean clone, copies `dist/` to `site/releases/<sha>`, and swaps the `current` symlink; it keeps the newest three releases. A failed build leaves the running release in place. `systemctl --user start fleeting-deploy.service` deploys immediately.
+- **Service.** Caddy and the `fleeting-service` container share the pod `fleeting` (`deploy/fleeting.pod`), which publishes only `127.0.0.1:8085`. Caddy sends `/fleeting-api/*` to the service on `localhost:8081`. The service (`deploy/fleeting-service.container`) runs the code read-only from `~/containers/volumes/fleeting-service/current`. It is a pod and not a private Podman network because a rootless bridge network needs `nft`, which deepthought does not have.
+- **Deploys are pulls.** `fleeting-deploy.timer` runs every 10 minutes. The script compares the head of `main` on GitHub with `site/deployed-sha` and does nothing if they match. Otherwise it builds that commit in a clean clone, copies `dist/` to `site/releases/<sha>`, and swaps the `current` symlink; it keeps the newest three releases. A failed build leaves the running release in place. When `service/` changed, it first installs the service the same way (`npm ci --omit=dev`, `fleeting-service/releases/<sha>`), restarts it and checks `/fleeting-api/health` through Caddy; if the check fails, it puts the previous service release back and leaves the site as it was. `systemctl --user start fleeting-deploy.service` deploys immediately.
 - **Build settings** (`FLEETING_ACCOUNTS`, `FLEETING_WEBSITE`, `FLEETING_DISALLOW_ROBOTS`) are `Environment=` lines in `fleeting-deploy.service`.
 - **Headers.** The CSP and security headers are computed in `vite.config.js` and written to the Netlify-style `dist/_headers`. The CSP has `script-src 'self'`, so an inline `<script>` or a dependency that uses `eval`, `new Function` or WebAssembly shows a blank page in production. The comments in `vite.config.js` list what the policy allows and why. The deploy script converts that file into the Caddy snippet `site/headers.caddy`, and restarts Caddy only when the snippet changes.
 

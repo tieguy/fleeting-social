@@ -13,8 +13,10 @@ import Icon from '../components/icon';
 import Link from '../components/link';
 import Loader from '../components/loader';
 import NavMenu from '../components/nav-menu';
+import ServiceUnlock from '../components/service-unlock';
 import Status from '../components/status';
 import { api } from '../utils/api';
+import { ServiceUnpairedError } from '../utils/fleeting-service';
 import {
   blendDigest,
   digestCutoff,
@@ -213,6 +215,8 @@ function ForYou() {
   const [reloadCount, reload] = useReducer((c) => c + 1, 0);
   const [digest, setDigest] = useState(null);
   const [error, setError] = useState(null);
+  // Set when this device must unlock the Fleeting service with a passkey
+  const [unpaired, setUnpaired] = useState(null);
   const [verdicts, setVerdicts] = useState({});
   const [reasons, setReasons] = useState({});
   const [openReasons, setOpenReasons] = useState({});
@@ -232,6 +236,7 @@ function ForYou() {
     let cancelled = false;
     setDigest(null);
     setError(null);
+    setUnpaired(null);
     setFinished(false);
     setPrevious(null);
     setOpenReasons({});
@@ -277,7 +282,9 @@ function ForYou() {
         });
       } catch (e) {
         console.error(e);
-        if (!cancelled) setError(String(e?.message || e));
+        if (cancelled) return;
+        if (e instanceof ServiceUnpairedError) setUnpaired(e);
+        else setError(String(e?.message || e));
       }
     })();
     return () => {
@@ -289,12 +296,17 @@ function ForYou() {
   const itemsRef = useRef(shownItems);
   itemsRef.current = shownItems;
 
+  function saveFailed(e) {
+    console.error(e);
+    showToast(t`Not saved: ${e?.message || e}`);
+  }
+
   function setVerdict(key, rule, verdict, action) {
     setVerdicts((prev) => ({
       ...prev,
       [key]: { ...prev[key], rule, verdict },
     }));
-    recordVerdict(key, { rule, verdict, action }).then(setStore);
+    recordVerdict(key, { rule, verdict, action }).then(setStore, saveFailed);
   }
 
   // Likes, boosts and replies made from the digest count as "interesting"
@@ -355,7 +367,7 @@ function ForYou() {
     recordDigestRead({
       at: Date.now(),
       picks: digest.items,
-    }).then(setStore);
+    }).then(setStore, saveFailed);
   }
 
   async function showPrevious() {
@@ -398,7 +410,7 @@ function ForYou() {
                 type="button"
                 class="plain"
                 onClick={reload}
-                disabled={!digest && !error}
+                disabled={!digest && !error && !unpaired}
               >
                 <Trans>Reload</Trans>
               </button>
@@ -407,10 +419,17 @@ function ForYou() {
         </header>
         <main>
           <FixedAccountsBanner />
-          {error ? (
-            <p class="ui-state">
-              <Trans>Failed to load: {error}</Trans>
-            </p>
+          {unpaired ? (
+            <ServiceUnlock unpaired={unpaired} onUnlocked={reload} />
+          ) : error ? (
+            <div class="ui-state">
+              <p>
+                <Trans>Failed to load: {error}</Trans>
+              </p>
+              <button type="button" onClick={reload}>
+                <Trans>Try again</Trans>
+              </button>
+            </div>
           ) : !digest ? (
             <div class="ui-state">
               <Loader />

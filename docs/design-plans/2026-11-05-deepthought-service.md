@@ -27,8 +27,8 @@ the passkey syncs between them. Job 1 builds this authentication, so job
 Job 1 (LUI-276):
 
 - A Quadlet runs the service on deepthought. It publishes no port on the
-  host. The Fleeting Caddy container sends `/fleeting-api/*` to it on a
-  private Podman network.
+  host. The Fleeting Caddy container sends `/fleeting-api/*` to it inside
+  a shared Podman pod.
 - A device pairs with one passkey tap and gets a device cookie. A
   request without a valid cookie gets 401.
 - The first passkey registers with a one-time setup code from the
@@ -266,15 +266,19 @@ because `public/sw.js` caches responses whose path matches
 
 **Containers.**
 
-- A Quadlet network, `fleeting.network`.
-- `fleeting.container` (Caddy) joins it. The Caddyfile gets a
-  `handle /fleeting-api/*` block with `reverse_proxy fleeting-service:8080`,
-  before the `file_server` block. A missing static file still gets a plain
-  404, so the service worker's stale-shell recovery does not change.
-- `fleeting-service.container` joins it and publishes no port. Image
-  `docker.io/library/node:24-alpine`, pinned by tag and digest. The image
-  publishes arm64 (checked 2026-11-05). `ReadOnly=true`,
-  `UserNS=keep-id`, `DropCapability=ALL`, `NoNewPrivileges=true`,
+- A Quadlet pod, `fleeting.pod`, publishes `127.0.0.1:8085:8080` and sets
+  `UserNS=keep-id` (Podman refuses `--userns` on a container in a pod).
+  Not a private Podman network: a rootless bridge network needs
+  netavark's nftables driver, and deepthought has no `nft` (2026-11-06).
+- `fleeting.container` (Caddy) is in the pod. The Caddyfile has a
+  `handle /fleeting-api/*` block with `reverse_proxy localhost:8081`, and
+  the static files in a second `handle` block. A missing static file
+  still gets a plain 404, so the service worker's stale-shell recovery
+  does not change.
+- `fleeting-service.container` is in the pod, listens on 8081 and
+  publishes no port. Image `docker.io/library/node:24.22.2-alpine`,
+  pinned by digest. The image publishes arm64 (checked 2026-11-05).
+  `ReadOnly=true`, `DropCapability=ALL`, `NoNewPrivileges=true`,
   `--memory=128m --cpus=0.5`.
 - Bind mounts: the code read-only, from
   `~/containers/volumes/fleeting-service/current`, and the data

@@ -1,0 +1,30 @@
+[Unit]
+Description=Fleeting service (For You state for every device)
+
+[Container]
+ContainerName=fleeting-service
+# node 24.22.2 on Alpine, pinned to the image index digest of 2026-11-06
+Image=docker.io/library/node:24.22.2-alpine@sha256:1d9851811f111a340026bff10ecc075d51120788ef172c49337bf0f99e44a008
+# Shares the pod's network with Caddy; publishes no port of its own
+Pod=fleeting.pod
+# fleeting-deploy installs each release, with its node_modules, and points
+# `current` at it. The container resolves the symlink when it starts.
+Volume=%h/containers/volumes/fleeting-service/current:/app:ro
+Volume=%h/containers/volumes/fleeting-service/data:/data
+WorkingDir=/app
+Exec=node server.js
+Environment=FLEETING_SERVICE_RP_ID=fleeting.peafowl-polaris.ts.net
+Environment=FLEETING_SERVICE_ORIGIN=https://fleeting.peafowl-polaris.ts.net
+Environment=FLEETING_SERVICE_DATA=/data
+Environment=FLEETING_SERVICE_PORT=8081
+ReadOnly=true
+DropCapability=ALL
+NoNewPrivileges=true
+PodmanArgs=--memory=128m --cpus=0.5
+
+[Service]
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=default.target

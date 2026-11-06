@@ -139,6 +139,7 @@ msgstr "Go to account page"
 #: src/components/timeline.jsx:663
 #: src/components/timeline2.jsx:701
 #: src/pages/dm-thread.jsx:171
+#: src/pages/foryou.jsx:430
 #: src/pages/home.jsx:303
 #: src/pages/messages.jsx:200
 #: src/pages/notifications.jsx:1143
@@ -239,7 +240,7 @@ msgstr ""
 #: src/pages/catchup.jsx:74
 #: src/pages/catchup.jsx:1594
 #: src/pages/catchup.jsx:2249
-#: src/pages/foryou.jsx:176
+#: src/pages/foryou.jsx:178
 #: src/pages/status.jsx:1225
 #: src/pages/status.jsx:1955
 #: src/pages/year-in-posts.jsx:1394
@@ -311,7 +312,7 @@ msgstr "View post stats"
 #: src/components/status.jsx:3722
 #: src/components/status.jsx:3934
 #: src/components/translated-bio-sheet.jsx:21
-#: src/pages/accounts.jsx:49
+#: src/pages/accounts.jsx:50
 #: src/pages/catchup.jsx:1731
 #: src/pages/filters.jsx:260
 #: src/pages/filters.jsx:676
@@ -926,7 +927,7 @@ msgstr "Schedule"
 #: src/components/status.jsx:3176
 #: src/components/status.jsx:3188
 #: src/pages/conversation-thread.jsx:116
-#: src/pages/foryou.jsx:133
+#: src/pages/foryou.jsx:135
 msgid "Reply"
 msgstr ""
 
@@ -986,7 +987,7 @@ msgstr "Custom emojis are not available on this server."
 
 #. placeholder {0}: e?.message || e
 #: src/components/dislike-reasons.jsx:36
-#: src/pages/foryou.jsx:118
+#: src/pages/foryou.jsx:120
 msgid "Failed: {0}"
 msgstr "Failed: {0}"
 
@@ -1139,7 +1140,7 @@ msgstr "Exit"
 #: src/components/status.jsx:3356
 #: src/components/status.jsx:3359
 #: src/pages/account-statuses.jsx:693
-#: src/pages/accounts.jsx:210
+#: src/pages/accounts.jsx:211
 #: src/pages/collection.jsx:284
 #: src/pages/hashtag.jsx:232
 #: src/pages/list.jsx:181
@@ -1152,13 +1153,13 @@ msgstr ""
 
 #: src/components/edit-profile-sheet.jsx:94
 #: src/components/shortcuts-settings.jsx:385
-#: src/pages/accounts.jsx:290
+#: src/pages/accounts.jsx:291
 msgid "Move up"
 msgstr ""
 
 #: src/components/edit-profile-sheet.jsx:100
 #: src/components/shortcuts-settings.jsx:401
-#: src/pages/accounts.jsx:312
+#: src/pages/accounts.jsx:313
 msgid "Move down"
 msgstr ""
 
@@ -1288,7 +1289,7 @@ msgstr ""
 
 #: src/components/generic-accounts.jsx:154
 #: src/components/notification.jsx:502
-#: src/pages/accounts.jsx:54
+#: src/pages/accounts.jsx:55
 #: src/pages/search.jsx:129
 #: src/pages/search.jsx:550
 msgid "Accounts"
@@ -1528,7 +1529,7 @@ msgstr ""
 #: src/components/status.jsx:1328
 #: src/components/status.jsx:3225
 #: src/components/status.jsx:3300
-#: src/pages/foryou.jsx:145
+#: src/pages/foryou.jsx:147
 msgid "Boost"
 msgstr ""
 
@@ -1904,8 +1905,8 @@ msgstr "Engagement"
 #: src/components/nav-menu.jsx:248
 #: src/components/shortcuts-settings.jsx:64
 #: src/components/shortcuts-settings.jsx:171
-#: src/pages/foryou.jsx:210
-#: src/pages/foryou.jsx:394
+#: src/pages/foryou.jsx:212
+#: src/pages/foryou.jsx:406
 msgid "For You"
 msgstr "For You"
 
@@ -2827,6 +2828,42 @@ msgstr ""
 msgid "See all"
 msgstr ""
 
+#: src/components/service-unlock.jsx:63
+msgid "Fleeting has no passkey yet, and the setup code has expired. Restart the Fleeting service for a new setup code."
+msgstr "Fleeting has no passkey yet, and the setup code has expired. Restart the Fleeting service for a new setup code."
+
+#: src/components/service-unlock.jsx:83
+msgid "Set up Fleeting"
+msgstr "Set up Fleeting"
+
+#: src/components/service-unlock.jsx:86
+msgid "Fleeting keeps this page's state on deepthought, for every device. Enter the setup code from the Fleeting service's log, then create a passkey. Other devices unlock with that passkey."
+msgstr "Fleeting keeps this page's state on deepthought, for every device. Enter the setup code from the Fleeting service's log, then create a passkey. Other devices unlock with that passkey."
+
+#: src/components/service-unlock.jsx:95
+msgid "Setup code"
+msgstr "Setup code"
+
+#: src/components/service-unlock.jsx:104
+msgid "Create passkey"
+msgstr "Create passkey"
+
+#: src/components/service-unlock.jsx:116
+msgid "Fleeting keeps this page's state on deepthought. Unlock this device once with your passkey."
+msgstr "Fleeting keeps this page's state on deepthought. Unlock this device once with your passkey."
+
+#: src/components/service-unlock.jsx:127
+msgid "Unlock Fleeting"
+msgstr "Unlock Fleeting"
+
+#: src/components/service-unlock.jsx:164
+msgid "Passkey added"
+msgstr "Passkey added"
+
+#: src/components/service-unlock.jsx:172
+msgid "Add a passkey for Fleeting"
+msgstr "Add a passkey for Fleeting"
+
 #: src/components/shortcuts-settings.jsx:52
 msgid "Home / Following"
 msgstr ""
@@ -2942,7 +2979,7 @@ msgid "Max {SHORTCUTS_LIMIT} shortcuts"
 msgstr ""
 
 #: src/components/shortcuts-settings.jsx:492
-#: src/pages/accounts.jsx:437
+#: src/pages/accounts.jsx:438
 msgid "Import/export"
 msgstr ""
 
@@ -3231,7 +3268,7 @@ msgstr "Only <0>@{0}</0>"
 #: src/components/status.jsx:1430
 #: src/components/status.jsx:3225
 #: src/components/status.jsx:3298
-#: src/pages/foryou.jsx:145
+#: src/pages/foryou.jsx:147
 msgid "Unboost"
 msgstr ""
 
@@ -3275,7 +3312,7 @@ msgstr ""
 #: src/components/status.jsx:2388
 #: src/components/status.jsx:3317
 #: src/pages/conversation-thread.jsx:136
-#: src/pages/foryou.jsx:157
+#: src/pages/foryou.jsx:159
 msgid "Unlike"
 msgstr ""
 
@@ -3285,7 +3322,7 @@ msgstr ""
 #: src/components/status.jsx:3317
 #: src/components/status.jsx:3318
 #: src/pages/conversation-thread.jsx:136
-#: src/pages/foryou.jsx:157
+#: src/pages/foryou.jsx:159
 msgid "Like"
 msgstr ""
 
@@ -3767,64 +3804,64 @@ msgstr "Switch to my server (<0>{currentInstance}</0>)"
 msgid "Month"
 msgstr ""
 
-#: src/pages/accounts.jsx:134
+#: src/pages/accounts.jsx:135
 msgid "Current"
 msgstr ""
 
-#: src/pages/accounts.jsx:194
+#: src/pages/accounts.jsx:195
 msgid "Log back in"
 msgstr "Log back in"
 
-#: src/pages/accounts.jsx:202
+#: src/pages/accounts.jsx:203
 msgid "Default"
 msgstr ""
 
-#: src/pages/accounts.jsx:224
+#: src/pages/accounts.jsx:225
 msgid "Switch to this account"
 msgstr "Switch to this account"
 
-#: src/pages/accounts.jsx:233
+#: src/pages/accounts.jsx:234
 msgid "Switch in new tab/window"
 msgstr "Switch in new tab/window"
 
-#: src/pages/accounts.jsx:247
+#: src/pages/accounts.jsx:248
 msgid "View profile…"
 msgstr ""
 
-#: src/pages/accounts.jsx:270
+#: src/pages/accounts.jsx:271
 msgid "Set as default"
 msgstr ""
 
-#: src/pages/accounts.jsx:325
+#: src/pages/accounts.jsx:326
 msgid "Log out <0>@{unicodeAcct}</0>?"
 msgstr "Log out <0>@{unicodeAcct}</0>?"
 
-#: src/pages/accounts.jsx:352
+#: src/pages/accounts.jsx:353
 msgid "Log out and remove <0>@{unicodeAcct}</0>"
 msgstr "Log out and remove <0>@{unicodeAcct}</0>"
 
-#: src/pages/accounts.jsx:364
+#: src/pages/accounts.jsx:365
 msgid "Log out…"
 msgstr ""
 
-#: src/pages/accounts.jsx:374
+#: src/pages/accounts.jsx:375
 msgid "Remove <0>@{unicodeAcct}</0>?"
 msgstr "Remove <0>@{unicodeAcct}</0>?"
 
-#: src/pages/accounts.jsx:392
+#: src/pages/accounts.jsx:393
 msgid "Remove account…"
 msgstr "Remove account…"
 
 #. placeholder {0}: niceDateTime(account.createdAt)
-#: src/pages/accounts.jsx:400
+#: src/pages/accounts.jsx:401
 msgid "Connected on {0} (<0/>)"
 msgstr "Connected on {0} (<0/>)"
 
-#: src/pages/accounts.jsx:417
+#: src/pages/accounts.jsx:418
 msgid "Add an existing account"
 msgstr ""
 
-#: src/pages/accounts.jsx:424
+#: src/pages/accounts.jsx:425
 msgid "Note: <0>Default</0> account will always be used for first load. Switched accounts will persist during the session."
 msgstr ""
 
@@ -4522,142 +4559,147 @@ msgstr ""
 msgid "Unable to load posts."
 msgstr ""
 
-#: src/pages/foryou.jsx:51
+#: src/pages/foryou.jsx:53
 msgid "On your \"Always show\" list"
 msgstr "On your \"Always show\" list"
 
 #. placeholder {0}: reason.count
-#: src/pages/foryou.jsx:53
+#: src/pages/foryou.jsx:55
 msgid "{0, plural, one {Shared by # person you follow} other {Shared by # people you follow}}"
 msgstr "{0, plural, one {Shared by # person you follow} other {Shared by # people you follow}}"
 
-#: src/pages/foryou.jsx:60
+#: src/pages/foryou.jsx:62
 msgid "{likes} likes, from an account with {followers} followers"
 msgstr "{likes} likes, from an account with {followers} followers"
 
-#: src/pages/foryou.jsx:64
+#: src/pages/foryou.jsx:66
 msgid "{likes} likes"
 msgstr "{likes} likes"
 
-#: src/pages/foryou.jsx:67
+#: src/pages/foryou.jsx:69
 msgid "From someone you often reply to, boost or like"
 msgstr "From someone you often reply to, boost or like"
 
 #. placeholder {0}: reason.posts
-#: src/pages/foryou.jsx:69
+#: src/pages/foryou.jsx:71
 msgid "{0, plural, one {From a quiet poster: # post today} other {From a quiet poster: # posts today}}"
 msgstr "{0, plural, one {From a quiet poster: # post today} other {From a quiet poster: # posts today}}"
 
-#: src/pages/foryou.jsx:76
+#: src/pages/foryou.jsx:78
 msgid "{feed} feed, {likes} likes"
 msgstr "{feed} feed, {likes} likes"
 
-#: src/pages/foryou.jsx:80
+#: src/pages/foryou.jsx:82
 msgid "About {topics}"
 msgstr "About {topics}"
 
-#: src/pages/foryou.jsx:83
+#: src/pages/foryou.jsx:85
 msgid "A random post, to check the rules against chance"
 msgstr "A random post, to check the rules against chance"
 
-#: src/pages/foryou.jsx:166
+#: src/pages/foryou.jsx:168
 msgid "✓ Not for me"
 msgstr "✓ Not for me"
 
-#: src/pages/foryou.jsx:168
-#: src/pages/foryou.jsx:556
+#: src/pages/foryou.jsx:170
+#: src/pages/foryou.jsx:575
 msgid "Not for me"
 msgstr "Not for me"
 
-#: src/pages/foryou.jsx:177
+#: src/pages/foryou.jsx:179
 msgid "Other languages"
 msgstr "Other languages"
 
-#: src/pages/foryou.jsx:178
+#: src/pages/foryou.jsx:180
 msgid "Muted or blocked accounts"
 msgstr "Muted or blocked accounts"
 
-#: src/pages/foryou.jsx:179
+#: src/pages/foryou.jsx:181
 msgid "Your filters"
 msgstr "Your filters"
 
-#: src/pages/foryou.jsx:180
+#: src/pages/foryou.jsx:182
 msgid "Muted words"
 msgstr "Muted words"
 
-#: src/pages/foryou.jsx:181
+#: src/pages/foryou.jsx:183
 msgid "Shown in an earlier digest"
 msgstr "Shown in an earlier digest"
 
-#: src/pages/foryou.jsx:403
+#. placeholder {0}: e?.message || e
+#: src/pages/foryou.jsx:301
+msgid "Not saved: {0}"
+msgstr "Not saved: {0}"
+
+#: src/pages/foryou.jsx:415
 msgid "Reload"
 msgstr "Reload"
 
-#: src/pages/foryou.jsx:412
+#: src/pages/foryou.jsx:427
 msgid "Failed to load: {error}"
 msgstr "Failed to load: {error}"
 
-#: src/pages/foryou.jsx:418
+#: src/pages/foryou.jsx:437
 msgid "Reading posts from your accounts and feeds…"
 msgstr "Reading posts from your accounts and feeds…"
 
-#: src/pages/foryou.jsx:426
+#: src/pages/foryou.jsx:445
 msgid "Your previous digest."
 msgstr "Your previous digest."
 
 #. placeholder {0}: new Date(digest.cutoff).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit', })
-#: src/pages/foryou.jsx:430
+#: src/pages/foryou.jsx:449
 msgid "Posts since {0}."
 msgstr "Posts since {0}."
-
-#: src/pages/foryou.jsx:442
-msgid "Posts from the last 24 hours."
-msgstr "Posts from the last 24 hours."
-
-#. placeholder {0}: s.instance
-#. placeholder {1}: s.failed
-#: src/pages/foryou.jsx:449
-msgid "{0} not loaded: {1}"
-msgstr "{0} not loaded: {1}"
 
 #. placeholder {0}: s.instance
 #: src/pages/foryou.jsx:449
 #~ msgid "{0} not loaded. Log back in to this account to include it."
 #~ msgstr "{0} not loaded. Log back in to this account to include it."
 
-#: src/pages/foryou.jsx:462
+#: src/pages/foryou.jsx:461
+msgid "Posts from the last 24 hours."
+msgstr "Posts from the last 24 hours."
+
+#. placeholder {0}: s.instance
+#. placeholder {1}: s.failed
+#: src/pages/foryou.jsx:468
+msgid "{0} not loaded: {1}"
+msgstr "{0} not loaded: {1}"
+
+#: src/pages/foryou.jsx:481
 msgid "Nothing new since your last digest."
 msgstr "Nothing new since your last digest."
 
-#: src/pages/foryou.jsx:466
+#: src/pages/foryou.jsx:485
 msgid "Show the previous digest"
 msgstr "Show the previous digest"
 
-#: src/pages/foryou.jsx:513
+#: src/pages/foryou.jsx:532
 msgid "That's all for now."
 msgstr "That's all for now."
 
-#: src/pages/foryou.jsx:520
+#: src/pages/foryou.jsx:539
 msgid "Removed by filters:"
 msgstr "Removed by filters:"
 
-#: src/pages/foryou.jsx:531
+#: src/pages/foryou.jsx:550
 msgid "{instance}: {homeCount} home posts read, back {homeHours} h"
 msgstr "{instance}: {homeCount} home posts read, back {homeHours} h"
 
-#: src/pages/foryou.jsx:541
+#: src/pages/foryou.jsx:560
 msgid "How each rule is doing"
 msgstr "How each rule is doing"
 
-#: src/pages/foryou.jsx:547
+#: src/pages/foryou.jsx:566
 msgid "Rule"
 msgstr "Rule"
 
-#: src/pages/foryou.jsx:550
+#: src/pages/foryou.jsx:569
 msgid "Shown"
 msgstr "Shown"
 
-#: src/pages/foryou.jsx:553
+#: src/pages/foryou.jsx:572
 msgid "Interesting"
 msgstr "Interesting"
 

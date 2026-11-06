@@ -44,6 +44,15 @@ export default defineConfig({
     {
       name: 'Mobile Safari',
       use: { ...devices['iPhone 13 Mini'] },
+      testIgnore: /service-passkey\.spec\.js/,
+    },
+    // The virtual authenticator is a Chrome DevTools Protocol feature. The
+    // spec starts the Fleeting service itself; install its dependencies
+    // first with `npm ci --prefix service`.
+    {
+      name: 'Chromium',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: /service-passkey\.spec\.js/,
     },
   ],
 

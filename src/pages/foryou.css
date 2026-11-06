@@ -83,3 +83,15 @@
     }
   }
 }
+
+.service-unlock {
+  input {
+    max-width: 20em;
+    text-align: center;
+    font-family: var(--monospace-font, monospace);
+  }
+
+  .service-unlock-error {
+    color: var(--red-text-color);
+  }
+}

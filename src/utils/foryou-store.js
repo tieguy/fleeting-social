@@ -1,71 +1,60 @@
 // For You state: last read, the digests already shown, and the verdicts.
 //
-// This module is the only place that knows where the state lives. It keeps
-// it in browser storage for now; a service on deepthought will keep it so
-// that every device sees the same state, and only this module changes then.
-// So every function is async, as a network call will be.
+// This module is the only place that knows where the state lives: the
+// Fleeting service on deepthought, so every device sees the same state. Each
+// write is an operation that the service applies, never the whole state.
+// Calls throw ServiceUnpairedError when this device must unlock with a
+// passkey, and ServiceError when the service cannot be reached.
+//
+// State: { lastRead, digests: [{ at, picks: [{ key, rule }] }], verdicts:
+// { [key]: { rule, verdict: 'interesting' | 'not-for-me', actions: [...],
+// at } } }
 
-const KEY = 'foryouState';
+import { serviceFetch } from './fleeting-service';
+
+// The key that held the state in browser storage. A device that still has
+// it uploads it once, and the service merges it.
+const LOCAL_KEY = 'foryouState';
 // Digests older than this cannot hold a post the next digest could show,
 // because the window goes back at most 24 hours.
 const DIGEST_KEEP_MS = 48 * 60 * 60 * 1000;
-// Kept for per-rule counts over time
-const DIGEST_KEEP_COUNT = 200;
-const VERDICT_KEEP_COUNT = 2000;
 
-function empty() {
-  return { lastRead: null, digests: [], verdicts: {} };
-}
-
-function read() {
+function localState() {
   try {
-    const state = JSON.parse(localStorage.getItem(KEY));
-    if (state && typeof state === 'object') return { ...empty(), ...state };
+    const state = JSON.parse(localStorage.getItem(LOCAL_KEY));
+    if (state && typeof state === 'object') return state;
   } catch (e) {}
-  return empty();
+  return null;
 }
 
-function write(state) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(state));
-  } catch (e) {}
-}
-
-// { lastRead, digests: [{ at, picks: [{ key, rule }] }], verdicts: { [key]:
-// { rule, verdict: 'interesting' | 'not-for-me', actions: [...], at } } }
 export async function loadForYouState() {
-  return read();
+  const local = localState();
+  if (!local) return serviceFetch('/foryou');
+  const state = await serviceFetch('/foryou/import', {
+    method: 'POST',
+    body: local,
+  });
+  try {
+    localStorage.removeItem(LOCAL_KEY);
+  } catch (e) {}
+  return state;
 }
 
 // Records that the user reached the end of a digest at `at`.
-export async function recordDigestRead({ at, picks }) {
-  const state = read();
-  state.lastRead = at;
-  state.digests = [...state.digests, { at, picks }].slice(-DIGEST_KEEP_COUNT);
-  write(state);
-  return state;
+export function recordDigestRead({ at, picks }) {
+  return serviceFetch('/foryou/digests', {
+    method: 'POST',
+    body: { at, picks: picks.map(({ key, rule }) => ({ key, rule })) },
+  });
 }
 
 // Records a verdict on a digest post. `action` is what the user did: 'like',
 // 'boost', 'reply', or a "Not for me" reason ({ type, value }).
-export async function recordVerdict(key, { rule, verdict, action }) {
-  const state = read();
-  const prev = state.verdicts[key];
-  state.verdicts[key] = {
-    rule,
-    verdict,
-    actions: [...(prev?.actions || []), action].filter(Boolean),
-    at: Date.now(),
-  };
-  const keys = Object.keys(state.verdicts);
-  if (keys.length > VERDICT_KEEP_COUNT) {
-    keys
-      .sort((a, b) => state.verdicts[a].at - state.verdicts[b].at)
-      .slice(0, keys.length - VERDICT_KEEP_COUNT)
-      .forEach((k) => delete state.verdicts[k]);
-  }
-  write(state);
-  return state;
+export function recordVerdict(key, { rule, verdict, action }) {
+  return serviceFetch('/foryou/verdicts', {
+    method: 'POST',
+    body: { key, rule, verdict, action },
+  });
 }
 
 // Keys of the posts that a recent digest showed

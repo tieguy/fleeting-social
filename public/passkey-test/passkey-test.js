@@ -3,22 +3,22 @@
 // Safari requires each WebAuthn call to start in the tap handler itself, so
 // the handlers call navigator.credentials before any `await`.
 
-const logEl = document.getElementById("log");
-const STORE_KEY = "passkeyTestCredentialId";
+const logEl = document.getElementById('log');
+const STORE_KEY = 'passkeyTestCredentialId';
 
 function log(line) {
-  logEl.textContent += line + "\n";
+  logEl.textContent += line + '\n';
 }
 
 function b64url(buffer) {
   const bytes = new Uint8Array(buffer);
-  let s = "";
+  let s = '';
   for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 function fromB64url(s) {
-  const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/"));
+  const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
   return Uint8Array.from(bin, (c) => c.charCodeAt(0));
 }
 
@@ -28,18 +28,18 @@ function random(n) {
 
 // Flags byte of authenticator data (WebAuthn §6.1): byte 32
 function flags(authData) {
-  if (!authData) return "no authenticator data";
+  if (!authData) return 'no authenticator data';
   const f = new Uint8Array(authData)[32];
   return [
     `UP=${!!(f & 0x01)}`,
     `UV=${!!(f & 0x04)}`,
     `BE=${!!(f & 0x08)}`,
     `BS=${!!(f & 0x10)}`,
-  ].join(" ");
+  ].join(' ');
 }
 
 function errorText(e) {
-  return `${e?.name || "Error"}: ${e?.message || e}`;
+  return `${e?.name || 'Error'}: ${e?.message || e}`;
 }
 
 function getStored() {
@@ -55,7 +55,7 @@ async function environment() {
   log(`url: ${location.href}`);
   log(`userAgent: ${navigator.userAgent}`);
   log(
-    `standalone: display-mode=${matchMedia("(display-mode: standalone)").matches} navigator.standalone=${navigator.standalone}`,
+    `standalone: display-mode=${matchMedia('(display-mode: standalone)').matches} navigator.standalone=${navigator.standalone}`,
   );
   log(`secure context: ${window.isSecureContext}`);
   log(`PublicKeyCredential: ${typeof window.PublicKeyCredential}`);
@@ -76,32 +76,32 @@ async function environment() {
   } catch (e) {
     log(`conditional mediation: ${errorText(e)}`);
   }
-  log(`stored test credential: ${getStored() || "none"}`);
-  log("");
+  log(`stored test credential: ${getStored() || 'none'}`);
+  log('');
 }
 
 function register() {
-  log("--- create ---");
+  log('--- create ---');
   // The options the service will use: user verification required, a
   // discoverable credential preferred, no attestation.
   const promise = navigator.credentials.create({
     publicKey: {
-      rp: { id: location.hostname, name: "Fleeting passkey test" },
+      rp: { id: location.hostname, name: 'Fleeting passkey test' },
       user: {
         id: random(16),
-        name: "fleeting-passkey-test",
-        displayName: "Fleeting passkey test",
+        name: 'fleeting-passkey-test',
+        displayName: 'Fleeting passkey test',
       },
       challenge: random(32),
       pubKeyCredParams: [
-        { type: "public-key", alg: -7 },
-        { type: "public-key", alg: -257 },
+        { type: 'public-key', alg: -7 },
+        { type: 'public-key', alg: -257 },
       ],
       authenticatorSelection: {
-        residentKey: "preferred",
-        userVerification: "required",
+        residentKey: 'preferred',
+        userVerification: 'required',
       },
-      attestation: "none",
+      attestation: 'none',
       timeout: 120000,
     },
   });
@@ -116,38 +116,38 @@ function register() {
       log(`OK id=${cred.id}`);
       log(`authenticatorAttachment: ${cred.authenticatorAttachment}`);
       log(
-        `transports: ${r.getTransports ? JSON.stringify(r.getTransports()) : "n/a"}`,
+        `transports: ${r.getTransports ? JSON.stringify(r.getTransports()) : 'n/a'}`,
       );
       log(
-        `algorithm: ${r.getPublicKeyAlgorithm ? r.getPublicKeyAlgorithm() : "n/a"}`,
+        `algorithm: ${r.getPublicKeyAlgorithm ? r.getPublicKeyAlgorithm() : 'n/a'}`,
       );
       log(
         `flags: ${flags(r.getAuthenticatorData ? r.getAuthenticatorData() : null)}`,
       );
-      log("");
+      log('');
     },
     (e) => {
       log(`FAILED ${errorText(e)}`);
-      log("");
+      log('');
     },
   );
 }
 
 function login(useStored) {
   const stored = useStored ? getStored() : null;
-  log(`--- get (${stored ? "stored credential" : "any passkey"}) ---`);
+  log(`--- get (${stored ? 'stored credential' : 'any passkey'}) ---`);
   if (useStored && !stored) {
-    log("no stored credential: run step 1 first");
-    log("");
+    log('no stored credential: run step 1 first');
+    log('');
     return;
   }
   const promise = navigator.credentials.get({
     publicKey: {
       rpId: location.hostname,
       challenge: random(32),
-      userVerification: "required",
+      userVerification: 'required',
       allowCredentials: stored
-        ? [{ type: "public-key", id: fromB64url(stored) }]
+        ? [{ type: 'public-key', id: fromB64url(stored) }]
         : [],
       timeout: 120000,
     },
@@ -159,25 +159,25 @@ function login(useStored) {
       log(`authenticatorAttachment: ${cred.authenticatorAttachment}`);
       log(`flags: ${flags(cred.response.authenticatorData)}`);
       log(
-        `userHandle: ${cred.response.userHandle ? b64url(cred.response.userHandle) : "none"}`,
+        `userHandle: ${cred.response.userHandle ? b64url(cred.response.userHandle) : 'none'}`,
       );
-      log("");
+      log('');
     },
     (e) => {
       log(`FAILED ${errorText(e)}`);
-      log("");
+      log('');
     },
   );
 }
 
-document.getElementById("register").addEventListener("click", register);
-document.getElementById("login").addEventListener("click", () => login(true));
+document.getElementById('register').addEventListener('click', register);
+document.getElementById('login').addEventListener('click', () => login(true));
 document
-  .getElementById("login-any")
-  .addEventListener("click", () => login(false));
-document.getElementById("copy").addEventListener("click", () => {
+  .getElementById('login-any')
+  .addEventListener('click', () => login(false));
+document.getElementById('copy').addEventListener('click', () => {
   navigator.clipboard.writeText(logEl.textContent).then(
-    () => log("(copied)"),
+    () => log('(copied)'),
     (e) => log(`copy failed: ${errorText(e)}`),
   );
 });

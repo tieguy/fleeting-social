@@ -1,121 +1,71 @@
 // @ts-check
 import { expect, test } from '@playwright/test';
 
-// The For You page against a stubbed Mastodon server: the digest renders
-// with its "why this post" lines, reaching the end records last read, the
-// next digest leaves out the posts already shown, and a like counts for the
-// rule that picked the post.
+import {
+  addDigest,
+  addVerdict,
+  emptyState,
+  importState,
+} from '../service/foryou.js';
 
-const DOMAIN = 'instance-a.test';
-const ACCOUNT = {
-  info: {
-    id: 'me',
-    username: 'alice',
-    acct: `alice@${DOMAIN}`,
-    displayName: 'Alice',
-  },
-  instanceURL: DOMAIN,
-  accessToken: 'token-a',
-};
+import { seed, stubMastodon } from './foryou-fixtures.js';
 
-function account(id, followers) {
-  return {
-    id,
-    username: id,
-    acct: id,
-    display_name: id,
-    url: `https://${DOMAIN}/@${id}`,
-    avatar: '',
-    avatar_static: '',
-    followers_count: followers,
-  };
-}
+// The For You page against a stubbed Mastodon server and a stubbed Fleeting
+// service: the digest renders with its "why this post" lines, reaching the
+// end records last read, the next digest leaves out the posts already shown,
+// and a like counts for the rule that picked the post.
+//
+// The service stub applies the service's own For You operations
+// (service/foryou.js) to an in-memory state. `service.paired` and
+// `service.down` stand for a device with no cookie and a service that does
+// not answer.
 
-function status(id, author, text, { minutesAgo, likes }) {
-  return {
-    id,
-    created_at: new Date(Date.now() - minutesAgo * 60_000).toISOString(),
-    account: account(author, 100),
-    content: `<p>${text}</p>`,
-    language: 'en',
-    visibility: 'public',
-    sensitive: false,
-    spoiler_text: '',
-    media_attachments: [],
-    mentions: [],
-    tags: [],
-    emojis: [],
-    reblogs_count: 1,
-    favourites_count: likes,
-    replies_count: 1,
-    favourited: false,
-    reblogged: false,
-  };
-}
+let service;
 
-const HOME = [
-  status('1', 'ann', 'Zoning reform passed the board', {
-    minutesAgo: 30,
-    likes: 40,
-  }),
-  status('2', 'bea', 'A quiet afternoon post', { minutesAgo: 60, likes: 3 }),
-  status('3', 'cal', 'Some thoughts on tea', { minutesAgo: 90, likes: 12 }),
-  // A reply, which the filters remove
-  {
-    ...status('4', 'dee', 'Replying to someone', { minutesAgo: 20, likes: 0 }),
-    in_reply_to_id: '99',
-    in_reply_to_account_id: 'zed',
-  },
-];
+// Requests from a service worker skip page.route, so the stub would miss
+// the writes once the worker controls the page
+test.use({ serviceWorkers: 'block' });
 
-function seed(page, { conversationMode = false } = {}) {
-  return page.addInitScript(
-    ([account, conversationMode]) => {
-      if (conversationMode) {
-        localStorage.setItem('conversationModeOverride', 'on');
+async function stubService(page) {
+  service = { state: emptyState(), paired: true, down: false };
+  await page.route('**/fleeting-api/**', async (route) => {
+    const req = route.request();
+    const path = new URL(req.url()).pathname.replace('/fleeting-api', '');
+    if (service.down) return route.fulfill({ status: 502, body: '' });
+    if (!service.paired) {
+      if (path === '/pair/options') {
+        return route.fulfill({
+          json: { challengeId: 'c', options: { challenge: 'x' } },
+        });
       }
-      localStorage.setItem('accounts', JSON.stringify([account]));
-      localStorage.setItem(
-        'instances',
-        JSON.stringify({
-          [account.instanceURL]: { domain: account.instanceURL },
-        }),
-      );
-      sessionStorage.setItem('currentAccount', account.info.id);
-    },
-    [ACCOUNT, conversationMode],
-  );
+      return route.fulfill({
+        status: 401,
+        json: { paired: false, hasPasskey: true, setup: false },
+      });
+    }
+    const body = req.postDataJSON();
+    const ops = {
+      'GET /foryou': (s) => s,
+      'GET /session': (s) => s,
+      'POST /foryou/digests': (s) => addDigest(s, body),
+      'POST /foryou/verdicts': (s) => addVerdict(s, body),
+      'POST /foryou/import': (s) => importState(s, body),
+    };
+    const op = ops[`${req.method()} ${path}`];
+    if (!op) return route.fulfill({ status: 404, json: { error: 'nope' } });
+    try {
+      service.state = op(service.state);
+    } catch (e) {
+      console.error(`service stub: ${req.method()} ${path}: ${e.message}`);
+      return route.fulfill({ status: 400, json: { error: e.message } });
+    }
+    return route.fulfill({ json: service.state });
+  });
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.route(`https://${DOMAIN}/**`, (route) => {
-    const url = new URL(route.request().url());
-    const path = url.pathname;
-    if (path === '/api/v1/accounts/verify_credentials') {
-      return route.fulfill({ json: account('me', 10) });
-    }
-    if (path === '/api/v1/timelines/home') {
-      // One page, then the end of the timeline
-      return route.fulfill({
-        json: url.searchParams.get('max_id') ? [] : HOME,
-      });
-    }
-    if (
-      path === '/api/v1/lists' ||
-      path === '/api/v1/favourites' ||
-      path === '/api/v1/accounts/me/statuses'
-    ) {
-      return route.fulfill({ json: [] });
-    }
-    const like = path.match(/^\/api\/v1\/statuses\/(\d+)\/favourite$/);
-    if (like) {
-      const post = HOME.find((s) => s.id === like[1]);
-      return route.fulfill({
-        json: { ...post, favourited: true, favourites_count: 41 },
-      });
-    }
-    return route.abort();
-  });
+  await stubService(page);
+  await stubMastodon(page);
 });
 
 test('shows a digest, records last read, then shows nothing new', async ({
@@ -133,13 +83,8 @@ test('shows a digest, records last read, then shows nothing new', async ({
   await expect(page.getByText('Replies 1')).toBeVisible();
 
   await page.getByText("That's all for now.").scrollIntoViewIfNeeded();
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () => JSON.parse(localStorage.getItem('foryouState'))?.lastRead,
-      ),
-    )
-    .toBeTruthy();
+  await expect.poll(() => service.state.lastRead).toBeTruthy();
+  expect(service.state.digests[0].picks).toHaveLength(3);
 
   await page.getByRole('button', { name: 'Reload' }).click();
   await expect(
@@ -160,17 +105,9 @@ test('a like counts as interesting for the rule that picked the post', async ({
   await first.locator('.foryou-like').click();
 
   await expect
-    .poll(() =>
-      page.evaluate(() =>
-        Object.values(
-          JSON.parse(localStorage.getItem('foryouState'))?.verdicts || {},
-        ),
-      ),
-    )
+    .poll(() => Object.values(service.state.verdicts))
     .toHaveLength(1);
-  const [verdict] = await page.evaluate(() =>
-    Object.values(JSON.parse(localStorage.getItem('foryouState')).verdicts),
-  );
+  const [verdict] = Object.values(service.state.verdicts);
   expect(verdict.verdict).toBe('interesting');
   expect(verdict.actions).toEqual(['like']);
   expect(verdict.rule).toBeTruthy();
@@ -199,3 +136,51 @@ test('the lab still loads through the shared loader', async ({ page }) => {
   await expect(page.locator('.lab-posts > li').first()).toBeVisible();
 });
 
+test('uploads the browser-storage state once, then deletes it', async ({
+  page,
+}) => {
+  const lastRead = Date.now() - 60 * 60_000;
+  await page.addInitScript((lastRead) => {
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    localStorage.setItem(
+      'foryouState',
+      JSON.stringify({
+        lastRead,
+        digests: [{ at: lastRead, picks: [{ key: 'old/1', rule: 'raw' }] }],
+        verdicts: {},
+      }),
+    );
+  }, lastRead);
+  await seed(page);
+  await page.goto('/#/foryou');
+  await expect(page.locator('.foryou-posts > li').first()).toBeVisible();
+  expect(service.state.digests[0]).toEqual({
+    at: lastRead,
+    picks: [{ key: 'old/1', rule: 'raw' }],
+  });
+  expect(
+    await page.evaluate(() => localStorage.getItem('foryouState')),
+  ).toBeNull();
+});
+
+test('an unpaired device sees "Unlock Fleeting"', async ({ page }) => {
+  service.paired = false;
+  await seed(page);
+  await page.goto('/#/foryou');
+  await expect(
+    page.getByRole('button', { name: 'Unlock Fleeting' }),
+  ).toBeVisible();
+});
+
+test('a service that does not answer gives an error and a retry', async ({
+  page,
+}) => {
+  service.down = true;
+  await seed(page);
+  await page.goto('/#/foryou');
+  await expect(page.getByText(/Failed to load/)).toBeVisible();
+  service.down = false;
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.locator('.foryou-posts > li')).toHaveCount(3);
+});

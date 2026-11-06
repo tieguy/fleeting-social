@@ -14,6 +14,7 @@ import MenuLink from '../components/menu-link';
 import Menu2 from '../components/menu2';
 import NameText from '../components/name-text';
 import RelativeTime from '../components/relative-time';
+import { AddPasskeyButton } from '../components/service-unlock';
 import { isLoggedIn } from '../utils/acting-accounts';
 import { api } from '../utils/api';
 import { revokeAccessToken } from '../utils/auth';
@@ -436,6 +437,9 @@ function Accounts({ onClose }) {
             >
               <Trans>Import/export</Trans>
             </button>
+          </p>
+          <p>
+            <AddPasskeyButton />
           </p>
         </section>
       </main>

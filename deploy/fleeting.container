@@ -4,7 +4,8 @@ Description=Fleeting static site (Caddy)
 [Container]
 ContainerName=fleeting
 Image=docker.io/library/caddy:2.10.2-alpine
-PublishPort=127.0.0.1:8085:8080
+# Publishes 127.0.0.1:8085 through the pod
+Pod=fleeting.pod
 Volume=%h/containers/volumes/fleeting/Caddyfile:/etc/caddy/Caddyfile:ro
 Volume=%h/containers/volumes/fleeting/site:/srv:ro
 ReadOnly=true

@@ -48,3 +48,6 @@ src/iconify-icons/
 # Local Netlify folder
 .netlify
 dev-dist/
+
+# Fleeting service data from `npm run service:dev`
+service/.data

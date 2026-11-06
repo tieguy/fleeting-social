@@ -11,7 +11,9 @@ export default defineConfig({
     },
   },
   test: {
-    // Playwright owns tests/*.spec.js; vitest only runs unit tests in src/
-    include: ['src/**/*.test.{js,jsx}'],
+    // Playwright owns tests/*.spec.js; vitest runs the unit tests in src/ and
+    // service/
+    include: ['src/**/*.test.{js,jsx}', 'service/**/*.test.js'],
+    exclude: ['**/node_modules/**'],
   },
 });

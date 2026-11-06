@@ -1,0 +1,15 @@
+{
+  "name": "fleeting-service",
+  "private": true,
+  "type": "module",
+  "description": "Keeps Fleeting's For You state for every device; see docs/design-plans/2026-11-05-deepthought-service.md",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@simplewebauthn/server": "^14.0.3"
+  }
+}
