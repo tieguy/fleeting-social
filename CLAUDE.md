@@ -221,7 +221,9 @@ a reply or mention to the user. The design plan is
   Bluesky authors (`isHiddenAuthor`), because the facade passes them on.
   `statusExtras` lists what a text-only row leaves out (media, quoted
   post, link preview, poll). The header's "New post" button opens the
-  full composer, threads included.
+  full composer, threads included. A quiet line under the title says when
+  the full app opens next (`nextOpening` and `dayRelation` in
+  `conversation-schedule.js`).
 - **Thread.** `src/pages/conversation-thread.jsx` fetches the context of
   the post and of the thread root, and `threadRows` in
   `src/utils/conversation-tree.js` nests the replies (indent capped at

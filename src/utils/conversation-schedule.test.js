@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { isFullAppOpen, nextChange } from './conversation-schedule';
+import {
+  dayRelation,
+  isFullAppOpen,
+  nextChange,
+  nextOpening,
+} from './conversation-schedule';
 
 // Local-time dates. 2026-10-23 is a Friday, 2026-10-24 a Saturday.
 const fri = (hour, minute = 0) => new Date(2026, 9, 23, hour, minute);
@@ -77,5 +82,34 @@ describe('nextChange', () => {
 
   it('returns null when there are no windows', () => {
     expect(nextChange(fri(10), { weekday: [], weekend: [] })).toBe(null);
+  });
+});
+
+describe('nextOpening', () => {
+  it('finds the next window start from conversation mode', () => {
+    // Thursday 2026-11-05 21:45 → Friday 08:00
+    const next = nextOpening(new Date(2026, 10, 5, 21, 45));
+    expect(next).toEqual(new Date(2026, 10, 6, 8, 0));
+  });
+
+  it('skips the end of the window that is open now', () => {
+    // Thursday 12:30, inside the noon window → 21:00 the same day
+    const next = nextOpening(new Date(2026, 10, 5, 12, 30));
+    expect(next).toEqual(new Date(2026, 10, 5, 21, 0));
+  });
+
+  it('has no noon window on a weekend', () => {
+    // Saturday 2026-11-07 10:00 → 21:00
+    const next = nextOpening(new Date(2026, 10, 7, 10, 0));
+    expect(next).toEqual(new Date(2026, 10, 7, 21, 0));
+  });
+});
+
+describe('dayRelation', () => {
+  const now = new Date(2026, 10, 5, 22, 0);
+  it('names today, tomorrow and later', () => {
+    expect(dayRelation(now, new Date(2026, 10, 5, 23, 0))).toBe('today');
+    expect(dayRelation(now, new Date(2026, 10, 6, 8, 0))).toBe('tomorrow');
+    expect(dayRelation(now, new Date(2026, 10, 8, 8, 0))).toBe('later');
   });
 });

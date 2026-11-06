@@ -17,10 +17,13 @@ import {
   groupConversations,
   statusExtras,
 } from '../utils/conversation-group';
+import { dayRelation, nextOpening } from '../utils/conversation-schedule';
+import DateTimeFormat from '../utils/date-time-format';
 import { walkUntilCutoff } from '../utils/engagement-tally';
 import getHTMLText from '../utils/getHTMLText';
 import showCompose from '../utils/show-compose';
 import states, { saveStatus } from '../utils/states';
+import useConversationMode from '../utils/useConversationMode';
 import useTitle from '../utils/useTitle';
 
 const LIMIT = 40;
@@ -195,6 +198,7 @@ function Conversations() {
               </button>
             </div>
           </div>
+          <NextWindow />
         </header>
         <main>
           <FixedAccountsBanner />
@@ -294,6 +298,32 @@ function Conversations() {
         </main>
       </div>
     </div>
+  );
+}
+
+// A quiet line under the title: when the full app opens next. Shown only in
+// conversation mode; the hook re-renders it at each window edge.
+function NextWindow() {
+  const { t, i18n } = useLingui();
+  const conversationMode = useConversationMode();
+  if (!conversationMode) return null;
+  const now = new Date();
+  const next = nextOpening(now);
+  if (!next) return null;
+  const time = DateTimeFormat(i18n.locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(next);
+  const relation = dayRelation(now, next);
+  const weekday = DateTimeFormat(i18n.locale, { weekday: 'long' }).format(next);
+  return (
+    <p class="conversations-next-window">
+      {relation === 'today'
+        ? t`Full app opens today at ${time}`
+        : relation === 'tomorrow'
+          ? t`Full app opens tomorrow at ${time}`
+          : t`Full app opens ${weekday} at ${time}`}
+    </p>
   );
 }
 

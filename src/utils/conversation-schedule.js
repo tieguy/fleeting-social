@@ -57,3 +57,23 @@ export function nextChange(date, windows = FULL_APP_WINDOWS) {
   }
   return null;
 }
+
+// The start of the next full-app window after `date`, or null when there is
+// none. The conversation page shows it.
+export function nextOpening(date, windows = FULL_APP_WINDOWS) {
+  let t = date;
+  for (let i = 0; i < 2; i++) {
+    t = nextChange(t, windows);
+    if (!t) return null;
+    if (isFullAppOpen(t, windows)) return t;
+  }
+  return null;
+}
+
+// Whether `target` falls on the same calendar day as `now` ('today'), the
+// next one ('tomorrow'), or later ('later'), in device local time
+export function dayRelation(now, target) {
+  const day = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const days = Math.round((day(target) - day(now)) / (24 * 60 * 60 * 1000));
+  return days <= 0 ? 'today' : days === 1 ? 'tomorrow' : 'later';
+}

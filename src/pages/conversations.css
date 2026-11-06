@@ -1,4 +1,12 @@
 #conversations-page {
+  .conversations-next-window {
+    margin: 0;
+    padding: 0 16px 6px;
+    text-align: center;
+    color: var(--text-insignificant-color);
+    font-size: 0.8em;
+  }
+
   .conversations-notice {
     margin: 0;
     padding: 12px 16px;
