@@ -12,14 +12,17 @@ all of the user's devices. It has two jobs, built in this order:
    and its own Bluesky refresh token. A Bluesky refresh token works only
    once, so two copies can invalidate each other. Several session bugs
    came from this (see "Session death is proven, never announced" in
-   `CLAUDE.md`). After job 2, the service is the only holder of the
+   `CLAUDE.md`). After job 2, the service holds the Mastodon token and
+   the Bluesky session for every device. It is the only holder of the
    Bluesky refresh token and the only process that refreshes it.
 
 The service is on the same origin as the app, under `/fleeting-api/`. A
 browser authenticates with a device cookie. The service issues that
 cookie only after the browser proves that it is logged in to one of the
 accounts in `FLEETING_ACCOUNTS`. Job 1 builds this authentication, so job
-2 adds no new trust step.
+2 adds no new trust step. Job 2 adds a passkey, so a new device can pair
+with one tap. A tailnet policy grant can also limit which devices reach
+the service at all.
 
 ## Definition of Done
 
@@ -48,6 +51,7 @@ Job 2 (LUI-277):
   for a new access token. The service refreshes at most once for each
   rotation, for all devices.
 - The service alone decides that a Bluesky session is dead.
+- A device with no account can pair with a passkey.
 - `CLAUDE.md` describes the new session model.
 
 ## Glossary
@@ -124,18 +128,74 @@ Why this choice:
   logged in already.
 - A device on the tailnet with no account credential cannot pair.
 
+### Job 2: passkeys
+
+In job 2, pairing a new device with an account means a full login: a
+Mastodon OAuth round trip, or typing a Bluesky app password. A passkey
+makes this one tap with Face ID or a fingerprint.
+
+- A paired device registers a passkey from the Accounts sheet. The
+  relying party ID is `fleeting.peafowl-polaris.ts.net`. The passkey
+  syncs through iCloud Keychain or 1Password, so the user's other devices
+  have it.
+- On a new device, `/pair` accepts a passkey assertion as a third proof,
+  next to the Mastodon and Bluesky tokens.
+- The service verifies registrations and assertions with
+  [`@simplewebauthn/server`](https://github.com/MasterKale/SimpleWebAuthn).
+  WebAuthn verification is crypto and CBOR parsing, so the plan uses a
+  vetted library instead of new code. This is the service's one npm
+  dependency. The deploy script runs `npm ci --omit=dev` in `service/` in
+  the clean clone, before it copies the code.
+- The service stores each passkey's public key and sign counter in
+  `devices.json`.
+
+Job 1 does not use passkeys. Its pairing needs no user action, and a
+passkey needs a tap.
+
+### Tailscale layer
+
+Tailscale offers controls at three levels. This plan uses the first, and
+the second as a check that could fail without harm.
+
+1. **Grants on the Service.** A tailnet policy grant can name
+   `svc:fleeting` as its destination. Its source can be a user, a tag, a
+   host alias or an IP address
+   ([grants syntax](https://tailscale.com/kb/1538/grants-syntax)). A grant
+   whose source lists only the iPhone, the iPad and the laptop stops Home
+   Assistant and the NAS before they reach HTTP. Two cautions: the same
+   grant also controls the static app, and a new device needs a policy
+   edit before it can open Fleeting. The current policy for
+   `svc:fleeting` was not checked. A policy change needs the user's
+   go-ahead, so the plan proposes this grant and does not depend on it.
+2. **Identity headers and app capabilities.** `tailscale serve` adds
+   `Tailscale-User-Login` to proxied requests. With `--accept-app-caps`
+   (Tailscale 1.92 or later, deepthought has 1.104.2), it also forwards
+   the capabilities that a grant gives the requester, as JSON in
+   `Tailscale-App-Capabilities`
+   ([Tailscale Serve docs](https://tailscale.com/kb/1312/serve),
+   [app capabilities](https://tailscale.com/kb/1537/grants-app-capabilities)).
+   Serve strips both headers from incoming requests, so a client cannot
+   forge them. The docs do not say whether a Tailscale Service adds them,
+   and this plan did not test it. Every device here has the same user, so
+   the user header cannot tell a phone from the NAS. An app capability
+   granted to the three device IP addresses could. But it gives the same
+   protection as item 1, with more configuration. The service logs the
+   headers if they are present, and does not require them.
+3. **Login and MFA.** Tailscale has no per-request login or MFA for HTTP
+   traffic. MFA applies when a device logs in to the tailnet, through the
+   identity provider. Tailscale SSH has a check mode that asks for a new
+   login, but only for SSH. `tsidp` is an OIDC provider that names the
+   user from the tailnet
+   ([tsidp](https://tailscale.com/docs/features/tsidp)). It is
+   experimental, and it identifies the user, not the device, so it gives
+   no more than item 2. The passkey is the per-device login factor in
+   this plan.
+
 ### Options not chosen
 
 - **Tailnet membership only.** Enough for job 1, not for job 2 (see
   Threat model). Job 1 would then need a second authentication step
   later, and every job 1 endpoint would change.
-- **Tailscale identity headers.** `tailscale serve` adds
-  `Tailscale-User-Login` to proxied requests
-  ([Tailscale Serve docs](https://tailscale.com/kb/1312/serve)). The page
-  does not say whether a Tailscale Service (`svc:fleeting`) also adds
-  them, and this plan did not test it. Also, every device in this tailnet
-  has the same user, so the header names the user, not the device. It
-  gives no more than tailnet membership.
 - **A pairing code.** The service prints a code on deepthought, and the
   user types it on the device. It works with no account, but each new
   device needs a shell on deepthought.
