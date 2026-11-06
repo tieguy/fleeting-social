@@ -21,8 +21,7 @@ browser authenticates with a device cookie. The service issues that
 cookie only after the browser proves that it is logged in to one of the
 accounts in `FLEETING_ACCOUNTS`. Job 1 builds this authentication, so job
 2 adds no new trust step. Job 2 adds a passkey, so a new device can pair
-with one tap. A tailnet policy grant can also limit which devices reach
-the service at all.
+with one tap.
 
 ## Definition of Done
 
@@ -154,8 +153,8 @@ passkey needs a tap.
 
 ### Tailscale layer
 
-Tailscale offers controls at three levels. This plan uses the first, and
-the second as a check that could fail without harm.
+Tailscale offers controls at three levels. This plan uses none of them as
+a requirement. The service logs the headers of item 2 if they are present.
 
 1. **Grants on the Service.** A tailnet policy grant can name
    `svc:fleeting` as its destination. Its source can be a user, a tag, a
@@ -164,9 +163,9 @@ the second as a check that could fail without harm.
    whose source lists only the iPhone, the iPad and the laptop stops Home
    Assistant and the NAS before they reach HTTP. Two cautions: the same
    grant also controls the static app, and a new device needs a policy
-   edit before it can open Fleeting. The current policy for
-   `svc:fleeting` was not checked. A policy change needs the user's
-   go-ahead, so the plan proposes this grant and does not depend on it.
+   edit before it can open Fleeting. The user decided on 2026-11-05 not
+   to change the tailnet policy for now. The device cookie and the
+   passkey do not depend on it.
 2. **Identity headers and app capabilities.** `tailscale serve` adds
    `Tailscale-User-Login` to proxied requests. With `--accept-app-caps`
    (Tailscale 1.92 or later, deepthought has 1.104.2), it also forwards
