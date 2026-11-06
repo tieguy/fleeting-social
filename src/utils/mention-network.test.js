@@ -5,7 +5,7 @@ import { getMentionInstance } from './mention-network';
 const bsky = {
   accountType: 'bluesky',
   instanceURL: 'https://bsky.social',
-  blueskySession: { refreshJwt: 'r' },
+  blueskySession: { accessJwt: 'r' },
 };
 const masto = { accessToken: 'x', instanceURL: 'mastodon.social' };
 const masto2 = { accessToken: 'y', instanceURL: 'hachyderm.io' };

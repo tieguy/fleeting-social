@@ -418,7 +418,7 @@ function ForYou() {
           </div>
         </header>
         <main>
-          <FixedAccountsBanner />
+          <FixedAccountsBanner noServiceUnlock={!!unpaired} />
           {unpaired ? (
             <ServiceUnlock unpaired={unpaired} onUnlocked={reload} />
           ) : error ? (

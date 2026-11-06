@@ -30,6 +30,7 @@ import {
 } from './following-reply-filter';
 import { buildExternalEmbed, firstLinkFacetUri } from './link-card';
 import { firstQuotedPostLink } from './quote-link';
+import { createServiceSessionManager } from './service-session';
 import { shortenLinkFacets } from './shorten-links';
 
 const MAX_IMAGE_SIZE = 950_000; // Bluesky blob limit is ~976KB
@@ -117,24 +118,12 @@ async function getImageDimensions(blob) {
 }
 
 export function createBlueskyClient({
-  service,
   instance,
-  session,
   did,
-  onSessionChange,
-  getStoredSession, // () => latest persisted session for this account
-  onAuthExpired, // auth is terminally dead; only a fresh login can fix it
+  getSession, // () => this account's stored session: { did, accessJwt, pdsUrl }
+  requestAccess, // (refusedAccessJwt) => the service's current session, or null
 }) {
   let agent = null;
-
-  // Refresh tokens are single-use (rotated), so a refresh token that failed
-  // terminally must not be retried on every call — but a *different* token
-  // appearing in the store (another tab/window rotated it, or the user logged
-  // in again) means the account is alive again.
-  let deadRefreshJwt = null;
-  // The refresh token the agent currently holds, tracked so an in-flight
-  // 'expired' event (which carries no session) can record which token died.
-  let lastRefreshJwt = session?.refreshJwt || null;
 
   function expiredError() {
     return new Error(
@@ -142,119 +131,21 @@ export function createBlueskyClient({
     );
   }
 
-  let resumePromise = null;
+  // The session lives on the Fleeting service; the agent only adds the
+  // stored access token and asks the service for a new one when the PDS
+  // refuses it (./service-session.js)
   async function ready() {
     if (!agent) {
-      const { AtpAgent } = await loadAtproto();
-      agent = new AtpAgent({
-        service,
-        persistSession: (evt, sess) => {
-          if (evt === 'update' || evt === 'create') {
-            lastRefreshJwt = sess?.refreshJwt || lastRefreshJwt;
-            deadRefreshJwt = null;
-            onSessionChange?.(sess);
-          } else if (evt === 'expired' || evt === 'create-failed') {
-            console.warn('Bluesky session', evt);
-            deadRefreshJwt = lastRefreshJwt;
-            // Allow a future revival (newer stored token) to actually resume
-            resumePromise = null;
-            // Terminal only if the store has no newer token to revive from.
-            // The client stays registered: ready() re-reads the store and
-            // revives if a fresh login/rotation lands there.
-            const stored = getStoredSession?.();
-            if (!stored?.refreshJwt || stored.refreshJwt === deadRefreshJwt) {
-              onAuthExpired?.();
-            }
-          }
-          // 'network-error' is transient: the agent keeps its session and
-          // the next request retries the refresh
-        },
-      });
-      // A response that is still 401 after the agent's own refresh attempt
-      // can mean the agent kept a session the server no longer accepts: it
-      // treats every refresh failure other than 401, ExpiredToken and
-      // InvalidToken as transient. proveSession() settles it.
-      const manager = agent.sessionManager;
-      if (typeof manager?.fetchHandler === 'function') {
-        const inner = manager.fetchHandler.bind(manager);
-        manager.fetchHandler = async (url, init) => {
-          const res = await inner(url, init);
-          if (res.status === 401) checkSession();
-          return res;
-        };
-      }
+      const { Agent } = await loadAtproto();
+      agent = new Agent(
+        createServiceSessionManager({ did, getSession, requestAccess }),
+      );
     }
-    if (agent.hasSession) return;
-    // Always resume from the *stored* session, not the snapshot this client
-    // was created with — another tab/window may have rotated the tokens since
-    const stored = getStoredSession?.() || session;
-    if (!stored?.refreshJwt) {
-      onAuthExpired?.();
-      throw expiredError();
-    }
-    if (stored.refreshJwt === deadRefreshJwt) throw expiredError();
-    if (!resumePromise) {
-      lastRefreshJwt = stored.refreshJwt;
-      resumePromise = agent.resumeSession(stored).catch((e) => {
-        resumePromise = null;
-        throw e;
-      });
-    }
-    await resumePromise;
-  }
-
-  // Proves a session dead with one explicit refresh, at most once a minute.
-  // Only the server refusing the refresh token counts: a network failure, a
-  // rate limit (429) or a server error (5xx) proves nothing. A successful
-  // refresh persists an 'update', which also clears authExpired. A newer
-  // token in the store (another tab, a fresh login) wins over the failure.
-  const SESSION_CHECK_INTERVAL = 60 * 1000;
-  let sessionCheck = null;
-  let lastSessionCheck = 0;
-  function checkSession() {
-    if (sessionCheck) return sessionCheck;
-    if (Date.now() - lastSessionCheck < SESSION_CHECK_INTERVAL) return null;
-    lastSessionCheck = Date.now();
-    sessionCheck = proveSession().finally(() => {
-      sessionCheck = null;
-    });
-    return sessionCheck;
-  }
-  async function proveSession() {
-    const held = agent?.session;
-    // No session held: the 'expired' handler already decided
-    if (!held?.refreshJwt) return;
-    try {
-      await agent.sessionManager.refreshSession();
-    } catch (e) {
-      const status = e?.status;
-      if (!(status >= 400 && status < 500) || status === 429) return;
-      // A 401 refusal already fired 'expired' and dropped the session
-      if (!agent.session) return;
-      const stored = getStoredSession?.();
-      if (stored?.refreshJwt && stored.refreshJwt !== held.refreshJwt) return;
-      deadRefreshJwt = held.refreshJwt;
-      agent.sessionManager.session = undefined;
-      resumePromise = null;
-      onAuthExpired?.();
-    }
-  }
-
-  // Adopt a token rotation persisted by another tab/window (no network).
-  // Keeping the in-memory session current prevents this context from
-  // refreshing with a stale, already-rotated (hence revoked) token.
-  function adoptSession(newSession) {
-    if (!newSession?.refreshJwt || !newSession?.accessJwt) return;
-    if (deadRefreshJwt && deadRefreshJwt !== newSession.refreshJwt) {
-      deadRefreshJwt = null;
-    }
-    if (!agent || newSession.refreshJwt === agent.session?.refreshJwt) return;
-    agent.sessionManager.session = { ...newSession };
-    lastRefreshJwt = newSession.refreshJwt;
+    if (!getSession()?.accessJwt) throw expiredError();
   }
 
   function agentDid() {
-    return agent?.did || agent?.session?.did || did;
+    return agent?.did || did;
   }
 
   // Caches to map AT-URIs back to data needed for actions
@@ -943,7 +834,7 @@ export function createBlueskyClient({
       // AppView may not have indexed it yet — build locally
       const profile = {
         did: agentDid(),
-        handle: agent.session?.handle || '',
+        handle: getSession()?.handle || '',
       };
       const status = postToStatus(
         {
@@ -1965,11 +1856,10 @@ export function createBlueskyClient({
       return agent;
     },
     instance,
-    accessToken: session?.accessJwt,
+    get accessToken() {
+      return getSession()?.accessJwt;
+    },
     bluesky: true,
-    adoptSession,
-    // Exposed for session-lifecycle tests; not part of the facade contract
-    _ready: ready,
     getFeedViewPrefs,
     setFeedViewPrefs,
     onStreamingReady() {

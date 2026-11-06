@@ -12,14 +12,17 @@
 // inlined for the store-free reason above.
 const isBlueskyAcct = (account) => account?.accountType === 'bluesky';
 
-// Whether a stored account can act. A Bluesky account needs an app-password
-// refresh JWT and no `authExpired` flag; an `accessToken` alone does not
-// count, because a Bluesky account stored by the removed OAuth login holds
-// an access token and no refresh JWT. A Mastodon account needs a token.
+// Whether a stored account can act. A Bluesky account needs an access
+// token in `blueskySession`; an `accessToken` alone does not count, because
+// a Bluesky account stored by the removed OAuth login holds an access token
+// and no `blueskySession`. A Mastodon account needs a token. Either is out
+// when the Fleeting service has set `authExpired`.
 export const isLoggedIn = (account) =>
-  isBlueskyAcct(account)
-    ? !account.authExpired && !!account.blueskySession?.refreshJwt
-    : !!account?.accessToken;
+  !!account &&
+  !account.authExpired &&
+  (isBlueskyAcct(account)
+    ? !!account.blueskySession?.accessJwt
+    : !!account.accessToken);
 
 // Logged-in accounts on the target's network — the accounts that could
 // perform a same-network action (boost, favourite, reply, follow…) on it.

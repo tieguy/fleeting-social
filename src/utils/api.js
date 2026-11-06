@@ -3,6 +3,7 @@ import { createRestAPIClient, createStreamingAPIClient } from 'masto';
 
 import mem from '../utils/mem';
 
+import { syncAccounts } from './account-sync';
 import {
   blueskyApi,
   getBlueskyAccountForInstance,
@@ -198,6 +199,8 @@ export async function initAccount(client, instance, accessToken, vapidKey) {
     vapidKey,
     createdAt: Date.now(),
   });
+  // Hands the new token to the Fleeting service, for every device
+  syncAccounts();
 }
 
 export const getPreferences = mem(

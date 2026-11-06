@@ -13,6 +13,7 @@ import { createServer } from 'node:http';
 
 import * as webauthn from '@simplewebauthn/server';
 
+import { createAccounts } from './accounts.js';
 import { createApp } from './app.js';
 import { createAuth } from './auth.js';
 import { createStore } from './store.js';
@@ -34,9 +35,11 @@ function log(line) {
 
 const store = await createStore(dataDir);
 const auth = createAuth({ store, webauthn, rpID, origin, log });
+const accounts = createAccounts({ store, log });
 const handle = createApp({
   store,
   auth,
+  accounts,
   secureCookie: origin.startsWith('https:'),
   log,
 });

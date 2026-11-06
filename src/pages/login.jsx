@@ -11,6 +11,7 @@ import BlueskyLoginForm from '../components/bluesky-login-form';
 import Icon from '../components/icon';
 import Link from '../components/link';
 import Loader from '../components/loader';
+import { ServiceGate } from '../components/service-unlock';
 import instancesListURL from '../data/instances.json?url';
 import { parseFixedAccounts } from '../utils/fixed-accounts';
 import { startMastodonLogin } from '../utils/mastodon-login';
@@ -157,6 +158,7 @@ function Login() {
           <br />
           <Trans>Log in</Trans>
         </h1>
+        <ServiceGate />
         {mastodonAccounts.length > 0 && (
           <div>
             <h2>

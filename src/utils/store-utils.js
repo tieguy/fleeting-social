@@ -9,10 +9,9 @@ export function saveAccounts(accounts) {
   store.local.setJSON('accounts', accounts);
 }
 
-// Read-modify-write helper for the accounts store. Bluesky token refreshes
-// persist rotated (single-use) tokens into this store at any time, so writing
-// back an array captured at render/mount time can revert a rotation and
-// strand the account with a revoked refresh token. Mutations must re-read at
+// Read-modify-write helper for the accounts store. New access tokens from the
+// Fleeting service land in this store at any time, so writing back an array
+// captured at render/mount time can revert one. Mutations must re-read at
 // write time: `fn` gets a freshly-read array; return false to skip saving.
 export function mutateAccounts(fn) {
   const accounts = getAccounts();
@@ -143,6 +142,10 @@ export function saveAccount(account) {
     acc.accessToken = account.accessToken;
     acc.vapidKey = account.vapidKey;
     acc.updatedAt = Date.now();
+    // A login on this device: the next account sync uploads the new token
+    // to the Fleeting service (./account-sync.js)
+    delete acc.serviceSynced;
+    delete acc.authExpired;
   } else {
     accounts.push(account);
   }

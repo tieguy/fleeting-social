@@ -5,6 +5,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { createAccounts } from './accounts.js';
 import { createApp } from './app.js';
 import { DEVICES, SETUP_CODE_TTL, createAuth, emptyDevices } from './auth.js';
 import { createStore } from './store.js';
@@ -71,7 +72,13 @@ async function start() {
     now: () => clock.t,
   });
   const code = await auth.startSetup();
-  const server = createServer(createApp({ store, auth }));
+  // Every Mastodon verify_credentials call accepts the token
+  const accounts = createAccounts({
+    store,
+    fetch: async () =>
+      new Response(JSON.stringify({ id: '42', acct: 'bob' }), { status: 200 }),
+  });
+  const server = createServer(createApp({ store, auth, accounts }));
   servers.push(server);
   await new Promise((r) => server.listen(0, r));
   const base = `http://127.0.0.1:${server.address().port}/fleeting-api`;
@@ -313,5 +320,45 @@ describe('For You routes', () => {
       body: { at: 1, picks: [] },
     });
     expect(none.status).toBe(401);
+  });
+});
+
+describe('account routes', () => {
+  it('need a device cookie', async () => {
+    const { call } = await start();
+    for (const [method, path] of [
+      ['GET', '/accounts'],
+      ['POST', '/accounts/bluesky'],
+      ['POST', '/accounts/bluesky/access'],
+      ['POST', '/accounts/mastodon'],
+      ['POST', '/accounts/remove'],
+    ]) {
+      const res = await call(
+        method,
+        path,
+        method === 'GET' ? {} : { body: {} },
+      );
+      expect(res.status).toBe(401);
+      expect(res.json.paired).toBe(false);
+    }
+  });
+
+  it('give a paired device the stored accounts', async () => {
+    const { call, setup } = await start();
+    const { cookie } = await setup();
+    const saved = await call('POST', '/accounts/mastodon', {
+      cookie,
+      body: { instanceURL: 'social.example', accessToken: 'tok' },
+    });
+    expect(saved.status).toBe(200);
+    const res = await call('GET', '/accounts', { cookie });
+    expect(res.json.accounts).toMatchObject([
+      { network: 'mastodon', id: '42', accessToken: 'tok' },
+    ]);
+    const bad = await call('POST', '/accounts/bluesky/access', {
+      cookie,
+      body: { did: 'did:plc:nobody', failed: 'x' },
+    });
+    expect(bad.status).toBe(404);
   });
 });

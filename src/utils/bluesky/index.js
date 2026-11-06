@@ -1,16 +1,14 @@
 // Bluesky account management + client registry for phanpy
-import store from '../store';
+import { applyAccountView, requestBlueskyAccess } from '../account-sync';
+import { serviceFetch } from '../fleeting-service';
 import {
   getAccount,
   getAccounts,
   getCurrentAccountID,
-  mutateAccounts,
-  saveAccounts,
   setCurrentAccountID,
 } from '../store-utils';
 
-import { createBlueskyClient, loadAtproto } from './client';
-import { blueskyInstanceInfo, profileToAccount } from './convert';
+import { createBlueskyClient } from './client';
 
 export { isBlueskyStatusID } from './convert';
 
@@ -23,15 +21,17 @@ export function isBlueskyAccount(account) {
   return account?.accountType === 'bluesky';
 }
 
-// Logged in = the account holds an app-password session's refresh JWT.
-// `authExpired` marks a terminally-dead session (set below in
-// markBlueskyAuthExpired) — treat it as logged out so merged-timeline and
-// cross-post fan-outs skip the account instead of erroring on every call.
+// Logged in = the account holds an access token from the Fleeting service
+// (or, before the first sync, from this device's own login). The service
+// sets `authExpired` when the PDS refuses the session's refresh token —
+// treat it as logged out so merged-timeline and cross-post fan-outs skip the
+// account instead of erroring on every call. A Bluesky account that an
+// earlier OAuth login stored has no `blueskySession` and is logged out.
 export function isBlueskyLoggedIn(account) {
   return (
     isBlueskyAccount(account) &&
     !account.authExpired &&
-    !!account.blueskySession?.refreshJwt
+    !!account.blueskySession?.accessJwt
   );
 }
 
@@ -48,7 +48,9 @@ export function hasMultipleNetworks() {
   const accounts = getAccounts();
   return (multiNetwork =
     accounts.some(isBlueskyLoggedIn) &&
-    accounts.some((a) => !isBlueskyAccount(a) && a.accessToken));
+    accounts.some(
+      (a) => !isBlueskyAccount(a) && a.accessToken && !a.authExpired,
+    ));
 }
 
 // Instances (hostnames) that belong to logged-in Bluesky accounts
@@ -70,73 +72,34 @@ export function getBlueskyAccountForInstance(instance) {
   );
 }
 
-function persistSessionForAccount(did, session) {
-  mutateAccounts((accounts) => {
-    const acc = accounts.find((a) => a.info.id === did);
-    if (!acc) return false;
-    acc.blueskySession = {
-      did: session.did,
-      handle: session.handle,
-      accessJwt: session.accessJwt,
-      refreshJwt: session.refreshJwt,
-      active: session.active !== false,
-    };
-    acc.accessToken = session.accessJwt;
-    // A live token refresh proves the session works again
-    delete acc.authExpired;
-  });
-}
-
-// Terminal session death (refresh token revoked/expired and nothing newer in
-// the store): flag the account so the UI can offer "Log back in" and merged
-// views stop fanning out to it. Cleared by persistSessionForAccount or a
-// fresh login.
-function markBlueskyAuthExpired(did) {
-  mutateAccounts((accounts) => {
-    const acc = accounts.find((a) => a.info.id === did);
-    if (!acc || acc.authExpired) return false;
-    acc.authExpired = true;
-  });
+// The stored session, read again for every request. An account from before
+// the service held sessions has no `pdsUrl`; its login service answers until
+// the first sync stores the PDS.
+function storedSession(did) {
+  const acc = getAccounts().find(
+    (a) => isBlueskyAccount(a) && a.info.id === did,
+  );
+  if (!acc?.blueskySession || acc.authExpired) return null;
+  return {
+    ...acc.blueskySession,
+    pdsUrl:
+      acc.blueskySession.pdsUrl ||
+      acc.blueskyService ||
+      DEFAULT_BLUESKY_SERVICE,
+  };
 }
 
 export function getBlueskyClient(account) {
   const did = account.info.id;
   if (blueskyClients[did]) return blueskyClients[did];
   const client = createBlueskyClient({
-    service: account.blueskyService || DEFAULT_BLUESKY_SERVICE,
     instance: account.instanceURL,
-    session: account.blueskySession,
     did,
-    onSessionChange: (session) => persistSessionForAccount(did, session),
-    getStoredSession: () =>
-      getAccounts().find((a) => a.info.id === did)?.blueskySession || null,
-    onAuthExpired: () => markBlueskyAuthExpired(did),
+    getSession: () => storedSession(did),
+    requestAccess: (failed) => requestBlueskyAccess(did, failed),
   });
   blueskyClients[did] = client;
   return client;
-}
-
-// Other tabs/windows rotate the (single-use) refresh tokens and persist them
-// to localStorage; adopt those rotations into any live agents here so this
-// context doesn't later refresh with a revoked token. `storage` fires only in
-// contexts other than the writer, so this never loops.
-if (typeof window !== 'undefined') {
-  window.addEventListener('storage', (e) => {
-    if (e.key !== 'accounts' || !e.newValue) return;
-    let accounts;
-    try {
-      accounts = JSON.parse(e.newValue);
-    } catch (err) {
-      return;
-    }
-    if (!Array.isArray(accounts)) return;
-    for (const did of Object.keys(blueskyClients)) {
-      const acc = accounts.find((a) => a?.info?.id === did);
-      if (acc?.blueskySession) {
-        blueskyClients[did].adoptSession?.(acc.blueskySession);
-      }
-    }
-  });
 }
 
 // api()-compatible result for a Bluesky account
@@ -151,71 +114,23 @@ export function blueskyApi(account) {
   };
 }
 
-function seedInstanceInfo(instance) {
-  const instances = store.local.getJSON('instances') || {};
-  instances[instance] = blueskyInstanceInfo(instance);
-  store.local.setJSON('instances', instances);
-  const nodeInfos = store.local.getJSON('nodeInfos') || {};
-  nodeInfos[instance] = {
-    software: { name: 'bluesky', version: '1.0.0' },
-  };
-  store.local.setJSON('nodeInfos', nodeInfos);
-}
-
-// Log in with handle + app password, save the account and make it current
+// Log in with handle + app password through the Fleeting service, which
+// keeps the session for every device and not the password. Saves the
+// account and makes it current.
 export async function loginBluesky({ service, identifier, password }) {
-  service = (service || DEFAULT_BLUESKY_SERVICE).trim();
-  if (!/^https?:\/\//.test(service)) {
-    service = `https://${service}`;
-  }
-  service = service.replace(/\/+$/, '');
-  const instance = new URL(service).host.toLowerCase();
-
-  const { AtpAgent } = await loadAtproto();
-  const agent = new AtpAgent({ service });
-  await agent.login({
-    identifier: identifier.trim().replace(/^@/, ''),
-    password: password.trim(),
-  });
-  const session = agent.session;
-  let profile;
-  try {
-    const res = await agent.getProfile({ actor: session.did });
-    profile = res.data;
-  } catch (e) {
-    profile = { did: session.did, handle: session.handle };
-  }
-
-  seedInstanceInfo(instance);
-
-  const accounts = getAccounts();
-  const existing = accounts.find((a) => a.info.id === session.did);
-  const accountData = {
-    info: profileToAccount(profile, instance),
-    instanceURL: instance,
-    accessToken: session.accessJwt,
-    accountType: 'bluesky',
-    blueskyService: service,
-    blueskySession: {
-      did: session.did,
-      handle: session.handle,
-      accessJwt: session.accessJwt,
-      refreshJwt: session.refreshJwt,
-      active: session.active !== false,
+  const view = await serviceFetch('/accounts/bluesky', {
+    method: 'POST',
+    body: {
+      service: service || DEFAULT_BLUESKY_SERVICE,
+      identifier,
+      password,
     },
-    vapidKey: null,
-  };
-  if (existing) {
-    Object.assign(existing, accountData, { updatedAt: Date.now() });
-    delete existing.authExpired;
-  } else {
-    accounts.push({ ...accountData, createdAt: Date.now() });
-  }
-  saveAccounts(accounts);
-  setCurrentAccountID(session.did);
+  });
+  applyAccountView(view);
+  setCurrentAccountID(view.id);
   // Invalidate any cached client for this account
-  delete blueskyClients[session.did];
-  return session.did;
+  delete blueskyClients[view.id];
+  return view.id;
 }
 
 export function logoutBluesky(accountID) {
@@ -231,7 +146,9 @@ export function getOtherNetworkAccounts() {
   const accounts = getAccounts();
   if (isBlueskyAccount(current)) {
     // Current is Bluesky → other Mastodon-ish accounts
-    return accounts.filter((a) => !isBlueskyAccount(a) && a.accessToken);
+    return accounts.filter(
+      (a) => !isBlueskyAccount(a) && a.accessToken && !a.authExpired,
+    );
   }
   // Current is Mastodon → Bluesky accounts
   return accounts.filter(

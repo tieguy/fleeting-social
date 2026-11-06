@@ -312,7 +312,7 @@ msgstr "View post stats"
 #: src/components/status.jsx:3722
 #: src/components/status.jsx:3934
 #: src/components/translated-bio-sheet.jsx:21
-#: src/pages/accounts.jsx:50
+#: src/pages/accounts.jsx:53
 #: src/pages/catchup.jsx:1731
 #: src/pages/filters.jsx:260
 #: src/pages/filters.jsx:676
@@ -1140,7 +1140,7 @@ msgstr "Exit"
 #: src/components/status.jsx:3356
 #: src/components/status.jsx:3359
 #: src/pages/account-statuses.jsx:693
-#: src/pages/accounts.jsx:211
+#: src/pages/accounts.jsx:231
 #: src/pages/collection.jsx:284
 #: src/pages/hashtag.jsx:232
 #: src/pages/list.jsx:181
@@ -1153,13 +1153,13 @@ msgstr ""
 
 #: src/components/edit-profile-sheet.jsx:94
 #: src/components/shortcuts-settings.jsx:385
-#: src/pages/accounts.jsx:291
+#: src/pages/accounts.jsx:311
 msgid "Move up"
 msgstr ""
 
 #: src/components/edit-profile-sheet.jsx:100
 #: src/components/shortcuts-settings.jsx:401
-#: src/pages/accounts.jsx:313
+#: src/pages/accounts.jsx:333
 msgid "Move down"
 msgstr ""
 
@@ -1246,26 +1246,26 @@ msgstr "Profiles featured by @{0}"
 msgid "No featured profiles."
 msgstr "No featured profiles."
 
-#: src/components/fixed-accounts-banner.jsx:68
+#: src/components/fixed-accounts-banner.jsx:77
 msgid "Not logged in on this device:"
 msgstr "Not logged in on this device:"
 
-#: src/components/fixed-accounts-banner.jsx:78
+#: src/components/fixed-accounts-banner.jsx:87
 msgid "(session expired)"
 msgstr "(session expired)"
 
-#: src/components/fixed-accounts-banner.jsx:88
-#: src/components/fixed-accounts-banner.jsx:96
+#: src/components/fixed-accounts-banner.jsx:97
+#: src/components/fixed-accounts-banner.jsx:105
 #: src/components/nav-menu.jsx:392
-#: src/pages/login.jsx:30
-#: src/pages/login.jsx:158
-#: src/pages/login.jsx:203
+#: src/pages/login.jsx:31
+#: src/pages/login.jsx:159
+#: src/pages/login.jsx:205
 #: src/pages/status.jsx:1119
 msgid "Log in"
 msgstr ""
 
-#: src/components/fixed-accounts-banner.jsx:101
-#: src/pages/login.jsx:178
+#: src/components/fixed-accounts-banner.jsx:110
+#: src/pages/login.jsx:180
 msgid "Failed to log in. Please try again."
 msgstr "Failed to log in. Please try again."
 
@@ -1289,7 +1289,7 @@ msgstr ""
 
 #: src/components/generic-accounts.jsx:154
 #: src/components/notification.jsx:502
-#: src/pages/accounts.jsx:55
+#: src/pages/accounts.jsx:58
 #: src/pages/search.jsx:129
 #: src/pages/search.jsx:550
 msgid "Accounts"
@@ -2828,39 +2828,47 @@ msgstr ""
 msgid "See all"
 msgstr ""
 
-#: src/components/service-unlock.jsx:63
+#: src/components/service-unlock.jsx:73
 msgid "Fleeting has no passkey yet, and the setup code has expired. Restart the Fleeting service for a new setup code."
 msgstr "Fleeting has no passkey yet, and the setup code has expired. Restart the Fleeting service for a new setup code."
 
-#: src/components/service-unlock.jsx:83
+#: src/components/service-unlock.jsx:86
+#~ msgid "Fleeting keeps this page's state on deepthought, for every device. Enter the setup code from the Fleeting service's log, then create a passkey. Other devices unlock with that passkey."
+#~ msgstr "Fleeting keeps this page's state on deepthought, for every device. Enter the setup code from the Fleeting service's log, then create a passkey. Other devices unlock with that passkey."
+
+#: src/components/service-unlock.jsx:93
 msgid "Set up Fleeting"
 msgstr "Set up Fleeting"
 
-#: src/components/service-unlock.jsx:86
-msgid "Fleeting keeps this page's state on deepthought, for every device. Enter the setup code from the Fleeting service's log, then create a passkey. Other devices unlock with that passkey."
-msgstr "Fleeting keeps this page's state on deepthought, for every device. Enter the setup code from the Fleeting service's log, then create a passkey. Other devices unlock with that passkey."
+#: src/components/service-unlock.jsx:96
+msgid "Fleeting keeps your accounts and For You state on deepthought, for every device. Enter the setup code from the Fleeting service's log, then create a passkey. Other devices unlock with that passkey."
+msgstr "Fleeting keeps your accounts and For You state on deepthought, for every device. Enter the setup code from the Fleeting service's log, then create a passkey. Other devices unlock with that passkey."
 
-#: src/components/service-unlock.jsx:95
+#: src/components/service-unlock.jsx:105
 msgid "Setup code"
 msgstr "Setup code"
 
-#: src/components/service-unlock.jsx:104
+#: src/components/service-unlock.jsx:114
 msgid "Create passkey"
 msgstr "Create passkey"
 
 #: src/components/service-unlock.jsx:116
-msgid "Fleeting keeps this page's state on deepthought. Unlock this device once with your passkey."
-msgstr "Fleeting keeps this page's state on deepthought. Unlock this device once with your passkey."
+#~ msgid "Fleeting keeps this page's state on deepthought. Unlock this device once with your passkey."
+#~ msgstr "Fleeting keeps this page's state on deepthought. Unlock this device once with your passkey."
 
-#: src/components/service-unlock.jsx:127
+#: src/components/service-unlock.jsx:126
+msgid "Fleeting keeps your accounts and For You state on deepthought. Unlock this device once with your passkey."
+msgstr "Fleeting keeps your accounts and For You state on deepthought. Unlock this device once with your passkey."
+
+#: src/components/service-unlock.jsx:137
 msgid "Unlock Fleeting"
 msgstr "Unlock Fleeting"
 
-#: src/components/service-unlock.jsx:164
+#: src/components/service-unlock.jsx:190
 msgid "Passkey added"
 msgstr "Passkey added"
 
-#: src/components/service-unlock.jsx:172
+#: src/components/service-unlock.jsx:198
 msgid "Add a passkey for Fleeting"
 msgstr "Add a passkey for Fleeting"
 
@@ -2891,7 +2899,7 @@ msgstr ""
 #: src/components/shortcuts-settings.jsx:82
 #: src/components/shortcuts-settings.jsx:91
 #: src/components/shortcuts-settings.jsx:129
-#: src/pages/login.jsx:207
+#: src/pages/login.jsx:209
 msgid "Server"
 msgstr "Server"
 
@@ -2979,7 +2987,7 @@ msgid "Max {SHORTCUTS_LIMIT} shortcuts"
 msgstr ""
 
 #: src/components/shortcuts-settings.jsx:492
-#: src/pages/accounts.jsx:438
+#: src/pages/accounts.jsx:458
 msgid "Import/export"
 msgstr ""
 
@@ -3671,7 +3679,7 @@ msgstr "Login required."
 #: src/compose.jsx:96
 #: src/pages/annual-report.jsx:186
 #: src/pages/http-route.jsx:94
-#: src/pages/login.jsx:305
+#: src/pages/login.jsx:307
 msgid "Go home"
 msgstr ""
 
@@ -3804,64 +3812,69 @@ msgstr "Switch to my server (<0>{currentInstance}</0>)"
 msgid "Month"
 msgstr ""
 
-#: src/pages/accounts.jsx:135
+#. placeholder {0}: e.message || e
+#: src/pages/accounts.jsx:137
+msgid "Unable to log out: {0}"
+msgstr "Unable to log out: {0}"
+
+#: src/pages/accounts.jsx:155
 msgid "Current"
 msgstr ""
 
-#: src/pages/accounts.jsx:195
+#: src/pages/accounts.jsx:215
 msgid "Log back in"
 msgstr "Log back in"
 
-#: src/pages/accounts.jsx:203
+#: src/pages/accounts.jsx:223
 msgid "Default"
 msgstr ""
 
-#: src/pages/accounts.jsx:225
+#: src/pages/accounts.jsx:245
 msgid "Switch to this account"
 msgstr "Switch to this account"
 
-#: src/pages/accounts.jsx:234
+#: src/pages/accounts.jsx:254
 msgid "Switch in new tab/window"
 msgstr "Switch in new tab/window"
 
-#: src/pages/accounts.jsx:248
+#: src/pages/accounts.jsx:268
 msgid "View profile…"
 msgstr ""
 
-#: src/pages/accounts.jsx:271
+#: src/pages/accounts.jsx:291
 msgid "Set as default"
 msgstr ""
 
-#: src/pages/accounts.jsx:326
+#: src/pages/accounts.jsx:346
 msgid "Log out <0>@{unicodeAcct}</0>?"
 msgstr "Log out <0>@{unicodeAcct}</0>?"
 
-#: src/pages/accounts.jsx:353
+#: src/pages/accounts.jsx:373
 msgid "Log out and remove <0>@{unicodeAcct}</0>"
 msgstr "Log out and remove <0>@{unicodeAcct}</0>"
 
-#: src/pages/accounts.jsx:365
+#: src/pages/accounts.jsx:385
 msgid "Log out…"
 msgstr ""
 
-#: src/pages/accounts.jsx:375
+#: src/pages/accounts.jsx:395
 msgid "Remove <0>@{unicodeAcct}</0>?"
 msgstr "Remove <0>@{unicodeAcct}</0>?"
 
-#: src/pages/accounts.jsx:393
+#: src/pages/accounts.jsx:413
 msgid "Remove account…"
 msgstr "Remove account…"
 
 #. placeholder {0}: niceDateTime(account.createdAt)
-#: src/pages/accounts.jsx:401
+#: src/pages/accounts.jsx:421
 msgid "Connected on {0} (<0/>)"
 msgstr "Connected on {0} (<0/>)"
 
-#: src/pages/accounts.jsx:418
+#: src/pages/accounts.jsx:438
 msgid "Add an existing account"
 msgstr ""
 
-#: src/pages/accounts.jsx:425
+#: src/pages/accounts.jsx:445
 msgid "Note: <0>Default</0> account will always be used for first load. Switched accounts will persist during the session."
 msgstr ""
 
@@ -4862,36 +4875,36 @@ msgstr ""
 #~ msgid "Failed to register application"
 #~ msgstr "Failed to register application"
 
-#: src/pages/login.jsx:172
+#: src/pages/login.jsx:174
 msgid "Continue as {label}"
 msgstr "Continue as {label}"
 
-#: src/pages/login.jsx:222
+#: src/pages/login.jsx:224
 msgid "server domain"
 msgstr "server domain"
 
-#: src/pages/login.jsx:247
+#: src/pages/login.jsx:249
 msgid "e.g. “mastodon.social”"
 msgstr ""
 
-#: src/pages/login.jsx:258
+#: src/pages/login.jsx:260
 msgid "Failed to log in. Please try again or try another server."
 msgstr "Failed to log in. Please try again or try another server."
 
-#: src/pages/login.jsx:270
+#: src/pages/login.jsx:272
 msgid "Continue with {selectedInstanceText}"
 msgstr ""
 
-#: src/pages/login.jsx:271
+#: src/pages/login.jsx:273
 msgid "Continue"
 msgstr ""
 
-#: src/pages/login.jsx:290
+#: src/pages/login.jsx:292
 #: src/pages/welcome.jsx:60
 msgid "Log in with Bluesky"
 msgstr "Log in with Bluesky"
 
-#: src/pages/login.jsx:299
+#: src/pages/login.jsx:301
 msgid "Don't have an account? Create one!"
 msgstr ""
 

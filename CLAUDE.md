@@ -24,15 +24,22 @@ A small adapter layer (`src/utils/bluesky/`) wraps [`@atproto/api`](https://gith
 
 `@atproto/api` is **lazy-loaded**, so Mastodon-only users don't pay the bundle cost.
 
-### Session death is proven, never announced
+### Account sessions
 
-Bluesky accounts log in with an app password only. AT Protocol OAuth is not supported: its authorization server fetches the client metadata document from the app's origin over the public internet, and the deployment is tailnet-only. The session is the app-password refresh JWT, kept in the accounts store in localStorage; `@atproto/api`'s `AtpAgent` refreshes it, and refresh tokens are single-use, so every refresh rotates it.
+The Fleeting service (see below) holds every account session, so a device that unlocks the service gets every account with no login of its own. Bluesky accounts log in with an app password only. AT Protocol OAuth is not supported: its authorization server fetches the client metadata document from the app's origin over the public internet, and the deployment is tailnet-only.
 
-An account's `authExpired` flag hides it from every merged view and shows "Log back in" in the Accounts sheet, so a false positive is a visible logout while everything still works. A Bluesky account with no refresh JWT, such as one an earlier OAuth login stored, is treated the same way. The merged views test `isBlueskyLoggedIn` in `src/utils/bluesky/index.js`; the composer and the Accounts sheet test `isLoggedIn` in `src/utils/acting-accounts.js`, which mirrors it. Three rules keep it honest, all in `src/utils/bluesky/client.js`:
+- **Bluesky.** The browser sends the handle and app password to the service, which calls `createSession` and keeps the session, not the password. The service is the only holder of the refresh token and the only process that refreshes it, because a refresh token works once and two holders invalidate each other. The browser holds only the access token, in the account's `blueskySession` (`{ did, handle, accessJwt, pdsUrl }`). The client (`src/utils/bluesky/client.js`) is an `@atproto/api` `Agent` with the session manager in `src/utils/bluesky/service-session.js`: it adds the stored access token to each request, and when the PDS answers 401 or `ExpiredToken`, it sends the refused token to `POST /fleeting-api/accounts/bluesky/access` and retries once with the answer.
+- **Mastodon.** Tokens do not rotate. After an OAuth login, the browser uploads the token and the service checks it with `verify_credentials`. Requests still go straight from the browser to the instance. masto.js takes no fetch of its own, so `src/utils/mastodon-refusal.js` wraps the global `fetch` and reports a 401 that carries a stored token to `POST /fleeting-api/accounts/mastodon/check`.
+- **Sync.** `src/utils/account-sync.js` runs on start and when the page comes back into view (at most every five minutes). It uploads this device's own logins that the service has not seen (`pendingImports` in `src/utils/account-merge.js`: a Mastodon login, or a Bluesky refresh token kept from before the service held sessions), then writes the service's accounts into the accounts store, so the rest of the app reads accounts as before. An account the service sent carries `serviceSynced`; when the service no longer lists it, another device logged it out, and it loses its credentials here too. A device with no cookie for the service shows the unlock control on the login page and in the fixed-accounts banner (`ServiceGate` in `src/components/service-unlock.jsx`).
+- **Log out** in the Accounts sheet deletes the account from the service, which ends the session on the network, so every device is logged out.
 
-- **A failed refresh is terminal only if the store has nothing newer.** Another tab may have rotated the token already. The client sets `authExpired` only when the stored refresh JWT is missing or is the one that just failed. A `network-error` refresh changes nothing.
-- **The client re-reads the store on every call.** It resumes from the stored session, not the one it was created with, and stays registered after a failure. A newer refresh JWT in the store (another tab's rotation, or a fresh login) revives it, and a successful refresh clears the flag (`persistSessionForAccount` in `index.js`). Rotations persisted by another tab are adopted through the `storage` event without a network call (`adoptSession`).
-- **A 401 that survives the agent's own refresh triggers one explicit refresh.** `@atproto/api` treats every refresh failure other than a 401, `ExpiredToken` or `InvalidToken` as transient and keeps the session, so requests can go on failing with "Authentication Required" while the account looks logged in. The client wraps the agent's `fetchHandler`, and on a 401 response `proveSession` refreshes once, at most once a minute. The account is marked expired only when the server refuses that refresh with a 4xx other than 429 and the store holds no newer token. A network failure, a 429 or a 5xx changes nothing.
+`authExpired` hides an account from every merged view and shows "Log back in", so a false positive is a visible logout while everything still works. Only the service sets it (`service/accounts.js`), and only on proof:
+
+- **Bluesky:** when the PDS refuses a refresh with a 4xx other than 429, and the stored refresh token is still the one it used, since a login may have replaced it meanwhile. A network error, a 429 or a 5xx changes nothing.
+- **Mastodon:** when `verify_credentials` answers 401. Anything else changes nothing.
+- **One refresh for all devices.** If the refused access token is not the stored one, another device refreshed already, and the service answers with the stored token. Reports that arrive during a refresh share it, and the service refreshes or checks an account at most once a minute.
+
+The browser's tests are `isLoggedIn` in `src/utils/acting-accounts.js` (the composer and the Accounts sheet) and `isBlueskyLoggedIn` in `src/utils/bluesky/index.js` (the merged views): an access token and no `authExpired`.
 
 The facade deliberately over-loads some Mastodon concepts. `v1.statuses.$select(id).quotes.list()` — Mastodon's own quotes endpoint, API v7+ — is backed by `app.bsky.feed.getQuotes` and, like masto.js, yields **statuses** rather than accounts (unlike the sibling `favouritedBy` / `rebloggedBy` listings). `v1.lists.list()` returns not only the user's Bluesky lists but also their subscribed **feed generators**, shaped as lists and tagged `_feed`. Per-list metadata and timeline calls branch on the AT-URI collection (`app.bsky.feed.generator` → `getFeedGenerator`/`getFeed`; `app.bsky.graph.list` → `getList`/`getListFeed`). Consumers must treat `_feed` entries as read-only — no edit / manage-members — see `src/pages/lists.jsx` and `src/pages/list.jsx`. A feed opened by a deep link before the Lists page has loaded is read through the current account, as a list is; open feeds from the Lists page.
 
@@ -67,7 +74,7 @@ The same routing rule applies to **per-profile actions** (follow / mute / block,
 
 A single-user build sets `FLEETING_ACCOUNTS` (comma-separated `network:identifier` pairs, for example `mastodon:luis_in_brief@social.coop,bluesky:lu.is`). `src/utils/fixed-accounts.js` parses it; malformed entries are dropped, so a typo in deploy configuration cannot break the page. When at least one entry parses, `src/pages/login.jsx` replaces the free-text server and handle fields with one entry per account: a Mastodon button that runs the normal OAuth flow for that instance, and a Bluesky app-password form whose handle field is read-only. The handle field is still submitted, so password managers can pair the saved app password with it. When the variable is unset, the login page is stock.
 
-The conversations page and the For You lab show `src/components/fixed-accounts-banner.jsx` at the top when this device is not logged in to a fixed account, or when that account's Bluesky session has expired. `fixedAccountStates` in `fixed-accounts.js` compares the fixed accounts with the accounts store. Each listed account has a log-in control. The Mastodon control runs `startMastodonLogin` (`src/utils/mastodon-login.js`), the same OAuth start the login page uses, and sets `loginRedirect` so the callback opens the same page again. The Bluesky control opens `src/components/bluesky-login-form.jsx`, the login page's app-password form, in place. A revoked Mastodon token is not detected: any stored token counts as logged in.
+The conversations page, For You and the For You lab show `src/components/fixed-accounts-banner.jsx` at the top when this device is not logged in to a fixed account, or when the Fleeting service found that account's session dead. `fixedAccountStates` in `fixed-accounts.js` compares the fixed accounts with the accounts store. Each listed account has a log-in control. The Mastodon control runs `startMastodonLogin` (`src/utils/mastodon-login.js`), the same OAuth start the login page uses, and sets `loginRedirect` so the callback opens the same page again. The Bluesky control opens `src/components/bluesky-login-form.jsx`, the login page's app-password form, in place. A device without a cookie for the Fleeting service sees the unlock control first, on the banner and on the login page, because unlocking brings every account the service holds.
 
 ## Engagement tab
 
@@ -131,16 +138,18 @@ a stub of the service that applies the service's own operations.
 ## Fleeting service
 
 `service/` is a small Node HTTP service on deepthought, at `/fleeting-api/`
-on the app's own origin. It keeps the For You state for every device. The
-design plan is `docs/design-plans/2026-11-05-deepthought-service.md`; job 2
-of that plan (account sessions) is not built yet.
+on the app's own origin. It keeps the For You state and the account
+sessions (see "Account sessions" above) for every device. The design plan
+is `docs/design-plans/2026-11-05-deepthought-service.md`.
 
 - **Modules.** `server.js` reads the configuration
   (`FLEETING_SERVICE_RP_ID`, `FLEETING_SERVICE_ORIGIN`,
   `FLEETING_SERVICE_DATA`, `FLEETING_SERVICE_PORT`). `app.js` holds the
   routes, `auth.js` the passkeys, setup code and device cookies,
   `foryou.js` the pure For You operations (`addDigest`, `addVerdict`,
-  `importState`, with the caps), and `store.js` the JSON files. Its one
+  `importState`, with the caps), `accounts.js` the account sessions (login,
+  import, the refresh decision, the Mastodon check, log out; the network is
+  injected for tests), and `store.js` the JSON files. Its one
   dependency is `@simplewebauthn/server`, in `service/package.json`. The
   app uses `@simplewebauthn/browser`, lazy-loaded from
   `src/utils/fleeting-service.js`.
@@ -155,12 +164,13 @@ of that plan (account sessions) is not built yet.
   container lists and revokes devices.
 - **Data.** JSON files in `~/containers/volumes/fleeting-service/data/`,
   directory mode 700 and files mode 600: `devices.json` (passkeys and the
-  SHA-256 hashes of device tokens) and `foryou.json`. Recovery when every
+  SHA-256 hashes of device tokens), `foryou.json` and `accounts.json` (the
+  Mastodon tokens and the Bluesky sessions, refresh tokens included). Recovery when every
   passkey is lost: delete the passkeys from `devices.json` and restart
   the service, which then logs a new setup code.
 - **Development.** `npm ci --prefix service`, then `npm run service:dev`
   runs it on port 8787 with RP ID `localhost`; the Vite dev server proxies
-  `/fleeting-api` to it. `tests/service-passkey.spec.js` starts the
+  `/fleeting-api` to it. A Bluesky login needs it. `tests/service-passkey.spec.js` starts the
   service itself and uses Chromium's virtual authenticator, so it runs in
   the `Chromium` Playwright project only.
 

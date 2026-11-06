@@ -1,6 +1,8 @@
-// The HTTP routes under /fleeting-api/. See "Job 1: For You API" and
-// "Authentication" in docs/design-plans/2026-11-05-deepthought-service.md.
+// The HTTP routes under /fleeting-api/. See "Job 1: For You API", "Job 2:
+// account sessions" and "Authentication" in
+// docs/design-plans/2026-11-05-deepthought-service.md.
 
+import { AccountError } from './accounts.js';
 import { AuthError, deviceCookie } from './auth.js';
 import {
   BadRequest,
@@ -58,6 +60,7 @@ function tailscaleIdentity(req) {
 export function createApp({
   store,
   auth,
+  accounts,
   secureCookie = true,
   log = () => {},
 }) {
@@ -120,6 +123,20 @@ export function createApp({
       const body = await readJson(req);
       send(res, 200, await updateForYou((s) => importState(s, body)));
     },
+    'GET /accounts': async (req, res) =>
+      send(res, 200, { accounts: await accounts.list() }),
+    'POST /accounts/bluesky': async (req, res) =>
+      send(res, 200, await accounts.loginBluesky(await readJson(req))),
+    'POST /accounts/bluesky/import': async (req, res) =>
+      send(res, 200, await accounts.importBluesky(await readJson(req))),
+    'POST /accounts/bluesky/access': async (req, res) =>
+      send(res, 200, await accounts.blueskyAccess(await readJson(req))),
+    'POST /accounts/mastodon': async (req, res) =>
+      send(res, 200, await accounts.saveMastodon(await readJson(req))),
+    'POST /accounts/mastodon/check': async (req, res) =>
+      send(res, 200, await accounts.checkMastodon(await readJson(req))),
+    'POST /accounts/remove': async (req, res) =>
+      send(res, 200, await accounts.remove(await readJson(req))),
   };
 
   return async function handle(req, res) {
@@ -158,7 +175,9 @@ export function createApp({
       return await closed[route](req, res);
     } catch (e) {
       const status =
-        e instanceof HttpError || e instanceof AuthError
+        e instanceof HttpError ||
+        e instanceof AuthError ||
+        e instanceof AccountError
           ? e.status
           : e instanceof BadRequest
             ? 400

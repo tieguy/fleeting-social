@@ -1,11 +1,14 @@
 import { Trans, useLingui } from '@lingui/react/macro';
 import { useEffect, useState } from 'preact/hooks';
+import { useSnapshot } from 'valtio';
 
+import { servicePairing, syncAccounts } from '../utils/account-sync';
 import {
   addPasskey,
   pairDevice,
   pairOptions,
   serviceSession,
+  ServiceUnpairedError,
   setupDevice,
 } from '../utils/fleeting-service';
 import showToast from '../utils/show-toast';
@@ -20,8 +23,9 @@ function errorMessage(e, t) {
 
 // Shown when this device has no cookie for the Fleeting service. `unpaired`
 // is the ServiceUnpairedError: with `setup` set, no passkey exists yet and the
-// form takes the one-time setup code from the service's log. `onUnlocked`
-// runs once the device has its cookie.
+// form takes the one-time setup code from the service's log. Once the device
+// has its cookie, it reads the accounts from the service, reloads if that
+// gave it its first usable account, and otherwise runs `onUnlocked`.
 function ServiceUnlock({ unpaired, onUnlocked }) {
   const { t } = useLingui();
   const [busy, setBusy] = useState(false);
@@ -47,7 +51,13 @@ function ServiceUnlock({ unpaired, onUnlocked }) {
     setError(null);
     try {
       await fn();
-      onUnlocked();
+      servicePairing.unpaired = null;
+      const synced = await syncAccounts();
+      if (synced?.gained) {
+        window.location.reload();
+        return;
+      }
+      onUnlocked?.();
     } catch (e) {
       console.error(e);
       setError(errorMessage(e, t));
@@ -84,9 +94,9 @@ function ServiceUnlock({ unpaired, onUnlocked }) {
         </h2>
         <p>
           <Trans>
-            Fleeting keeps this page's state on deepthought, for every device.
-            Enter the setup code from the Fleeting service's log, then create a
-            passkey. Other devices unlock with that passkey.
+            Fleeting keeps your accounts and For You state on deepthought, for
+            every device. Enter the setup code from the Fleeting service's log,
+            then create a passkey. Other devices unlock with that passkey.
           </Trans>
         </p>
         <input
@@ -114,8 +124,8 @@ function ServiceUnlock({ unpaired, onUnlocked }) {
     <div class="ui-state service-unlock">
       <p>
         <Trans>
-          Fleeting keeps this page's state on deepthought. Unlock this device
-          once with your passkey.
+          Fleeting keeps your accounts and For You state on deepthought. Unlock
+          this device once with your passkey.
         </Trans>
       </p>
       <p>
@@ -130,6 +140,22 @@ function ServiceUnlock({ unpaired, onUnlocked }) {
       {busy && <Loader />}
       {error && <p class="service-unlock-error">{error}</p>}
     </div>
+  );
+}
+
+// The unlock control, shown only while this device has no cookie for the
+// Fleeting service. It asks the service once on mount, and also shows when
+// an account sync finds the device unpaired.
+export function ServiceGate({ onUnlocked }) {
+  const { unpaired } = useSnapshot(servicePairing);
+  useEffect(() => {
+    serviceSession().catch((e) => {
+      if (e instanceof ServiceUnpairedError) servicePairing.unpaired = e;
+    });
+  }, []);
+  if (!unpaired) return null;
+  return (
+    <ServiceUnlock unpaired={servicePairing.unpaired} onUnlocked={onUnlocked} />
   );
 }
 

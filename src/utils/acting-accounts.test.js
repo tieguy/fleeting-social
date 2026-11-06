@@ -1,27 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  accountRoster,
-  eligibleAccounts,
-  isLoggedIn,
-} from './acting-accounts';
+import { accountRoster, eligibleAccounts, isLoggedIn } from './acting-accounts';
 
 const bsky = {
   accountType: 'bluesky',
   instanceURL: 'https://bsky.social',
-  blueskySession: { refreshJwt: 'r' },
+  blueskySession: { accessJwt: 'r' },
   info: { id: 'did:plc:abc' },
 };
 const bsky2 = {
   accountType: 'bluesky',
   instanceURL: 'https://bsky.social',
-  blueskySession: { refreshJwt: 's' },
+  blueskySession: { accessJwt: 's' },
   info: { id: 'did:plc:def' },
 };
 const bskyExpired = {
   accountType: 'bluesky',
   instanceURL: 'https://bsky.social',
-  blueskySession: { refreshJwt: 't' },
+  blueskySession: { accessJwt: 't' },
   authExpired: true,
   info: { id: 'did:plc:dead' },
 };
@@ -114,16 +110,16 @@ describe('accountRoster', () => {
 });
 
 describe('isLoggedIn', () => {
-  it('needs a refresh JWT for a Bluesky account', () => {
+  it('needs a session access token for a Bluesky account', () => {
     const bsky = { accountType: 'bluesky', accessToken: 'a' };
     expect(isLoggedIn(bsky)).toBe(false);
-    expect(isLoggedIn({ ...bsky, blueskySession: { refreshJwt: 'r' } })).toBe(
+    expect(isLoggedIn({ ...bsky, blueskySession: { accessJwt: 'r' } })).toBe(
       true,
     );
     expect(
       isLoggedIn({
         ...bsky,
-        blueskySession: { refreshJwt: 'r' },
+        blueskySession: { accessJwt: 'r' },
         authExpired: true,
       }),
     ).toBe(false);
@@ -132,5 +128,6 @@ describe('isLoggedIn', () => {
   it('needs an access token for a Mastodon account', () => {
     expect(isLoggedIn({ accessToken: 't' })).toBe(true);
     expect(isLoggedIn({})).toBe(false);
+    expect(isLoggedIn({ accessToken: 't', authExpired: true })).toBe(false);
   });
 });

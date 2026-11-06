@@ -68,6 +68,7 @@ import Search from './pages/search';
 import StatusRoute from './pages/status-route';
 import Trending from './pages/trending';
 import Welcome from './pages/welcome';
+import { syncAccounts } from './utils/account-sync';
 import {
   api,
   hasInstance,
@@ -80,6 +81,7 @@ import {
 import { getAccessToken } from './utils/auth';
 import { AuthProvider, useAuth } from './utils/auth-context';
 import focusDeck from './utils/focus-deck';
+import { watchMastodonRefusals } from './utils/mastodon-refusal';
 import states, { hideAllModals, initStates, statusKey } from './utils/states';
 import store from './utils/store';
 import {
@@ -424,6 +426,7 @@ const isPWA =
   window.matchMedia('(display-mode: standalone)').matches ||
   window.navigator.standalone === true;
 const PATH_RESTORE_TIME_LIMIT = 1 * 60 * 60 * 1000; // 1 hour, should be good enough
+const ACCOUNT_SYNC_INTERVAL = 5 * 60 * 1000;
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
@@ -572,6 +575,27 @@ function App() {
     store.sessionCookie.del('clientID');
     store.sessionCookie.del('clientSecret');
     store.sessionCookie.del('codeVerifier');
+  }, []);
+
+  // The Fleeting service holds every account session. Read them on start and
+  // when the page comes back into view; a device that had no usable account
+  // and gets one reloads into it. The OAuth callback syncs from initAccount.
+  useEffect(() => {
+    watchMastodonRefusals();
+    let lastSync = 0;
+    const sync = () => {
+      if (Date.now() - lastSync < ACCOUNT_SYNC_INTERVAL) return;
+      lastSync = Date.now();
+      syncAccounts().then((result) => {
+        if (result?.gained) window.location.reload();
+      });
+    };
+    if (!/[?&]code=/.test(window.location.search)) sync();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') sync();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
   let location = useLocation();

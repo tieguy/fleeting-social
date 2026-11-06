@@ -15,12 +15,15 @@ import Menu2 from '../components/menu2';
 import NameText from '../components/name-text';
 import RelativeTime from '../components/relative-time';
 import { AddPasskeyButton } from '../components/service-unlock';
+import { stripCredentials } from '../utils/account-merge';
+import { removeServiceAccount } from '../utils/account-sync';
 import { isLoggedIn } from '../utils/acting-accounts';
 import { api } from '../utils/api';
 import { revokeAccessToken } from '../utils/auth';
 import { isBlueskyAccount, logoutBluesky } from '../utils/bluesky';
 import haptics from '../utils/haptics';
 import niceDateTime from '../utils/nice-date-time';
+import showToast from '../utils/show-toast';
 import states from '../utils/states';
 import store from '../utils/store';
 import {
@@ -85,10 +88,10 @@ function Accounts({ onClose }) {
               };
 
               // NOTE: every store write below re-reads the accounts array via
-              // mutateAccounts and re-finds this account by ID. Bluesky token
-              // refreshes rewrite the store at any moment, so writing back the
-              // render-time `accounts` array (or index `i`) could revert a
-              // token rotation and kill that session.
+              // mutateAccounts and re-finds this account by ID. New access
+              // tokens from the Fleeting service rewrite the store at any
+              // moment, so writing back the render-time `accounts` array (or
+              // index `i`) could revert one.
               const removeAccount = () => {
                 mutateAccounts((accts) => {
                   const index = accts.findIndex(
@@ -104,26 +107,43 @@ function Accounts({ onClose }) {
                 } catch (e) {}
               };
 
+              // Logs the account out on every device: the Fleeting service
+              // deletes its session and ends it on the network. A Mastodon
+              // token that the service never held is revoked from here.
               const logOutAccount = async () => {
+                const { removed } = await removeServiceAccount(account);
                 if (isBlueskyAccount(account)) {
                   logoutBluesky(account.info.id);
                   return;
                 }
-                await revokeAccessToken({
-                  instanceURL: account.instanceURL,
-                  client_id: account.clientId,
-                  client_secret: account.clientSecret,
-                  token: account.accessToken,
-                });
+                if (!removed) {
+                  await revokeAccessToken({
+                    instanceURL: account.instanceURL,
+                    client_id: account.clientId,
+                    client_secret: account.clientSecret,
+                    token: account.accessToken,
+                  });
+                }
+              };
+
+              // False when the service could not log the account out; the
+              // account then stays as it is
+              const tryLogOut = async () => {
+                try {
+                  await logOutAccount();
+                  return true;
+                } catch (e) {
+                  console.error(e);
+                  showToast(t`Unable to log out: ${e.message || e}`);
+                  return false;
+                }
               };
 
               const markLoggedOut = () => {
                 mutateAccounts((accts) => {
                   const acc = accts.find((a) => a.info.id === account.info.id);
                   if (!acc) return false;
-                  delete acc.accessToken;
-                  delete acc.blueskySession;
-                  delete acc.authExpired;
+                  stripCredentials(acc);
                 });
               };
 
@@ -335,7 +355,7 @@ function Accounts({ onClose }) {
                           }
                           menuItemClassName="danger"
                           onClick={async () => {
-                            await logOutAccount();
+                            if (!(await tryLogOut())) return;
                             markLoggedOut();
                             reload();
                           }}
@@ -343,7 +363,7 @@ function Accounts({ onClose }) {
                             <MenuItem
                               className="danger"
                               onClick={async () => {
-                                await logOutAccount();
+                                if (!(await tryLogOut())) return;
                                 removeAccount();
                                 location.href = location.pathname || '/';
                               }}

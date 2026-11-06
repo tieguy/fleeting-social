@@ -46,19 +46,19 @@ function parseEntry(entry) {
 // Which fixed accounts this device is logged in to. `accounts` is the
 // accounts store. Each fixed account comes back with `state`:
 //   'ok'      — a usable session is stored
-//   'expired' — a Bluesky account whose session died (`authExpired`)
+//   'expired' — the Fleeting service found the session dead (`authExpired`)
 //   'missing' — nothing stored for it on this device
-// A Mastodon account counts as 'ok' whenever a token is stored: a revoked
-// token is not detected here.
 export function fixedAccountStates(fixedAccounts, accounts = []) {
   return fixedAccounts.map((fixed) => {
     const stored = accounts.find((a) => matches(fixed, a));
     let state = 'missing';
     if (stored) {
-      if (fixed.network === 'bluesky') {
-        if (stored.authExpired) state = 'expired';
-        else if (stored.blueskySession?.refreshJwt) state = 'ok';
-      } else if (stored.accessToken) {
+      if (stored.authExpired) state = 'expired';
+      else if (
+        fixed.network === 'bluesky'
+          ? stored.blueskySession?.accessJwt
+          : stored.accessToken
+      ) {
         state = 'ok';
       }
     }

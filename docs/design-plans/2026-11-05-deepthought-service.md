@@ -355,8 +355,8 @@ browser-side session manager:
   in the accounts store,
 - adds `Authorization: Bearer <access token>` to each request,
 - on a 401 or `ExpiredToken`, calls
-  `POST /fleeting-api/accounts/bluesky/<did>/access` with the access token
-  that failed, then retries the request once.
+  `POST /fleeting-api/accounts/bluesky/access` with the DID and the access
+  token that failed, then retries the request once.
 
 The service, for that call:
 
@@ -370,6 +370,15 @@ Login: the browser sends the handle and the app password to
 `POST /fleeting-api/accounts/bluesky`. The service calls
 `com.atproto.server.createSession` and stores the session. It does not
 store the app password.
+
+Migration: a device that kept its own refresh token from before the
+service held sessions sends it once to
+`POST /fleeting-api/accounts/bluesky/import`. If the service has no live
+session for the DID, it refreshes that token to prove it and keeps the
+result. Otherwise it keeps its own session. Then the device deletes its
+copy. A Mastodon token from before goes to
+`POST /fleeting-api/accounts/mastodon`, the same call that a new login
+makes.
 
 The three rules in "Session death is proven, never announced" move to the
 service:
@@ -420,9 +429,10 @@ token.
 - A login on any one device replaces the account on the service. The
   other devices get the new session on their next call. No device logs
   in twice.
-- The Accounts sheet keeps its log-out action. It deletes the account
-  from the service, so every device is logged out. There is no
-  per-device log-out.
+- The Accounts sheet keeps its log-out action. It calls
+  `POST /fleeting-api/accounts/remove`, which deletes the account from the
+  service and ends the session on the network, so every device is logged
+  out. There is no per-device log-out.
 
 ### Options not chosen
 

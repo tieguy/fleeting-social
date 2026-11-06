@@ -58,7 +58,7 @@ describe('fixedAccountStates', () => {
     accountType: 'bluesky',
     info: { acct: 'lu.is' },
     instanceURL: 'bsky.social',
-    blueskySession: { handle: 'lu.is', refreshJwt: 'jwt' },
+    blueskySession: { handle: 'lu.is', accessJwt: 'jwt' },
   };
   const states = (accounts) =>
     fixedAccountStates(fixed, accounts).map((a) => a.state);
@@ -69,6 +69,13 @@ describe('fixedAccountStates', () => {
 
   it('reports both accounts ok when both sessions are stored', () => {
     expect(states([mastodon, bluesky])).toEqual(['ok', 'ok']);
+  });
+
+  it('reports a revoked Mastodon token', () => {
+    expect(states([{ ...mastodon, authExpired: true }, bluesky])).toEqual([
+      'expired',
+      'ok',
+    ]);
   });
 
   it('reports an expired Bluesky session', () => {
