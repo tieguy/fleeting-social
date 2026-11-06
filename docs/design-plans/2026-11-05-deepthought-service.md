@@ -131,9 +131,14 @@ library:
   for the JSON encoding, lazy-loaded with the pairing screen. Mnemion
   loads it from esm.sh, which `script-src 'self'` blocks here, so the app
   bundles it.
-- User verification is required on registration and on assertion
-  (`userVerification: "required"`, `requireUserVerification: true`). So
-  the passkey proves the person, not only an unlocked device.
+- The service asks for user verification on registration and on
+  assertion (`userVerification: "required"`), and rejects a response
+  whose user-verified flag is not set (`requireUserVerification: true`).
+  The service does not choose the method. The passkey manager chooses it
+  (Face ID, a fingerprint, the device PIN or its own unlock) and reports
+  the result in the flag. With `attestationType: "none"` the service
+  cannot check that report. So this setting only rejects an
+  authenticator that does no verification at all.
 - `attestationType: "none"` and `residentKey: "preferred"`.
 - Each attempt gets its own challenge ID. The service keeps the challenge
   in memory for 10 minutes and deletes it when it is read, so it works
@@ -182,9 +187,9 @@ Why this choice:
 - One mechanism for both jobs. It does not depend on social.coop or the
   Bluesky PDS being up, and it needs no code that checks Mastodon or
   Bluesky credentials.
-- It identifies the person at the device: a passkey needs Face ID, a
-  fingerprint or a device PIN. A process on Home Assistant or the NAS has
-  no passkey and cannot pair.
+- A process on Home Assistant or the NAS has no passkey and cannot pair.
+  How the person proves themselves to the passkey manager is the
+  manager's choice, not the service's.
 - In job 2, a new device gets both accounts from one tap, with no
   Mastodon OAuth round trip and no app password.
 - The cost is one tap on each device, once a year or after the browser
