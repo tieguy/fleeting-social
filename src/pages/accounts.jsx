@@ -14,7 +14,7 @@ import MenuLink from '../components/menu-link';
 import Menu2 from '../components/menu2';
 import NameText from '../components/name-text';
 import RelativeTime from '../components/relative-time';
-import { AddPasskeyButton } from '../components/service-unlock';
+import { AddPasskeyButton, ServiceGate } from '../components/service-unlock';
 import { stripCredentials } from '../utils/account-merge';
 import { removeServiceAccount } from '../utils/account-sync';
 import { isLoggedIn } from '../utils/acting-accounts';
@@ -59,6 +59,9 @@ function Accounts({ onClose }) {
         </h2>
       </header>
       <main>
+        {/* A device without a Fleeting service cookie cannot renew its
+            Bluesky session; unlocking here works in the full app too */}
+        <ServiceGate onUnlocked={reload} />
         <section>
           <ul class="accounts-list" ref={accountsListParent}>
             {accounts.map((account, i) => {
