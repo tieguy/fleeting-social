@@ -14,7 +14,7 @@
 # service release back and stops before the site changes.
 set -euo pipefail
 
-REPO="${FLEETING_DEPLOY_REPO:-https://github.com/tieguy/phanpy-plus.git}"
+REPO="${FLEETING_DEPLOY_REPO:-https://github.com/tieguy/fleeting-social.git}"
 BRANCH="${FLEETING_DEPLOY_BRANCH:-main}"
 BASE="${FLEETING_DEPLOY_DIR:-$HOME/containers/volumes/fleeting}"
 SERVICE_BASE="${FLEETING_SERVICE_DIR:-$HOME/containers/volumes/fleeting-service}"

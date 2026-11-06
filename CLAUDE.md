@@ -337,6 +337,6 @@ Fleeting is single-user and served only on the operator's tailnet, from `deeptho
 
 ## Naming
 
-The project is `fleeting-social`, and the name users see is "Fleeting". The package name, the `FLEETING_*` build variables and the user-facing strings use it, and `src/utils/rename-guard.test.js` fails if `PHANPY_` or `Phanpy+` comes back. The GitHub repository is still `tieguy/phanpy-plus`.
+The project is `fleeting-social`, and the name users see is "Fleeting". The package name, the `FLEETING_*` build variables and the user-facing strings use it, and `src/utils/rename-guard.test.js` fails if `PHANPY_` or `Phanpy+` comes back. The GitHub repository is `tieguy/fleeting-social`.
 
 Some `phanpy` names stay by decision, because they credit upstream or keep compatibility: the `@phanpy@hachyderm.io` credit, the `cheeaun/phanpy` and `lingva.phanpy.social` service references, the `<phanpy-shortcuts-settings>` marker in profile bios (renaming it would lose users' saved shortcuts), `mock-posts.json`, and `// phanpy` code comments.
