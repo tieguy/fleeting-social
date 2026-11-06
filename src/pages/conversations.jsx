@@ -9,6 +9,7 @@ import FixedAccountsBanner from '../components/fixed-accounts-banner';
 import Icon from '../components/icon';
 import Link from '../components/link';
 import Loader from '../components/loader';
+import NavMenu from '../components/nav-menu';
 import RelativeTime from '../components/relative-time';
 import { api } from '../utils/api';
 import { getOtherNetworkAccounts } from '../utils/bluesky';
@@ -80,8 +81,9 @@ function Extras({ status }) {
 
 // The conversation list: threads with a reply or mention to the user in the
 // last day, from every merged source, one more day per tap of the footer
-// button. In conversation mode this
-// is the only page, so the header carries no navigation menu and no home link.
+// button. In conversation mode this is the only page, so the header carries no
+// navigation menu and no home link. In a full-app window the header has the
+// navigation menu, as the other pages do.
 // Each row opens its thread at the latest response.
 function Conversations() {
   const { t } = useLingui();
@@ -94,6 +96,7 @@ function Conversations() {
   const [days, setDays] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [reloadCount, reload] = useReducer((c) => c + 1, 0);
+  const conversationMode = useConversationMode();
 
   const sources = useRef(null);
   if (sources.current === null) {
@@ -180,7 +183,7 @@ function Conversations() {
       <div class="timeline-deck deck">
         <header>
           <div class="header-grid">
-            <div class="header-side" />
+            <div class="header-side">{!conversationMode && <NavMenu />}</div>
             <h1>
               <Trans>Conversations</Trans>
             </h1>

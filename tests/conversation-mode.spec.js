@@ -124,3 +124,33 @@ test('outside conversation mode, the full app is unchanged', async ({
   await expect(page).toHaveURL(/#\/following$/);
   await expect(page.locator('#compose-button')).toBeVisible();
 });
+
+test('outside conversation mode, the conversation list has the navigation menu', async ({
+  page,
+}) => {
+  await seed(page, { loggedIn: true, conversationMode: false });
+  await page.goto('/#/conversations');
+  await expect(
+    page.getByRole('heading', { name: 'Conversations' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('#conversations-page .nav-menu-button'),
+  ).toBeVisible();
+});
+
+test('when a full-app window opens on the conversation list, it goes to For You', async ({
+  page,
+}) => {
+  await seed(page, { loggedIn: true, conversationMode: true });
+  await page.goto('/#/conversations');
+  await expect(
+    page.getByRole('heading', { name: 'Conversations' }),
+  ).toBeVisible();
+  // The window opens: the dev override goes away, and the page comes back
+  // into view, which makes the hook check the schedule again.
+  await page.evaluate(() => {
+    localStorage.removeItem('conversationModeOverride');
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(page).toHaveURL(/#\/foryou$/);
+});

@@ -12,6 +12,7 @@ import {
   Route,
   Routes,
   useLocation,
+  useNavigate,
 } from 'react-router-dom';
 import { subscribe } from 'valtio';
 import { unstable_enableOp } from 'valtio/vanilla';
@@ -607,6 +608,22 @@ function App() {
   useEffect(() => {
     if (conversationMode) hideAllModals();
   }, [conversationMode]);
+  // When a full-app window opens on the conversation list, go to For You.
+  // The conversation list is where conversation mode leaves the page, so
+  // without this the window opens on the same list.
+  const navigate = useNavigate();
+  const prevConversationMode = useRef(conversationMode);
+  useEffect(() => {
+    const wasConversationMode = prevConversationMode.current;
+    prevConversationMode.current = conversationMode;
+    if (
+      wasConversationMode &&
+      !conversationMode &&
+      location.pathname === '/conversations'
+    ) {
+      navigate('/foryou', { replace: true });
+    }
+  }, [conversationMode]);
   // useLayoutEffect(() => {
   //   states.currentLocation = location.pathname;
   // }, [location.pathname]);
@@ -644,7 +661,12 @@ function App() {
             const timeSinceLastAccess =
               Date.now() - (lastPath.lastAccessed || 0);
             if (timeSinceLastAccess < PATH_RESTORE_TIME_LIMIT) {
-              window.location.hash = lastPath.path;
+              // The conversation list is the page conversation mode leaves
+              // behind. A full-app window opens on For You instead.
+              window.location.hash =
+                !conversationMode && lastPath.path === '/conversations'
+                  ? '/foryou'
+                  : lastPath.path;
             }
           }
           store.local.del(lastPathKey);

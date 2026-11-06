@@ -210,6 +210,10 @@ a reply or mention to the user. The design plan is
   `/conversations`.
   Entry into the mode waits until the composer closes, then
   `hideAllModals()` closes any sheet left open.
+  When a window opens while the page is on the conversation list, `App`
+  goes to `/foryou`, and a PWA that reopens on the list during a window
+  restores to `/foryou`. In a window, the list's header has the navigation
+  menu.
 - **List.** `src/pages/conversations.jsx` walks `types: ['mention']`
   notifications from every merged source for one day, plus one more day
   per tap of "Show one more day", and
