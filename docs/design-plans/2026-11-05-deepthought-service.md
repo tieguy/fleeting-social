@@ -273,6 +273,13 @@ keeps a copy in the accounts store, as now, because masto.js reads it
 there. Mastodon requests still go straight from the browser to the
 instance.
 
+A revoked Mastodon token is proven the same way as a dead Bluesky
+session. When a Mastodon request in the browser gets a 401, the app
+reports it to `POST /fleeting-api/accounts/mastodon/check`. The service
+calls `verify_credentials`, at most once a minute. It sets `authExpired`
+only when the instance answers 401. A network error, a 429 or a 5xx
+changes nothing. The service sets no timer for this check.
+
 ### Accounts store
 
 On start, a paired device calls `GET /fleeting-api/accounts`. The
@@ -280,11 +287,21 @@ response has each fixed account's Mastodon token, or Bluesky DID, PDS
 and access token, and its `authExpired` flag. The app writes these into
 the existing accounts store, so the rest of the app does not change.
 
-### Log out
+### Logged out
 
-Log out on any device deletes the account from the service, so every
-device is logged out. The copies in browsers are caches. See open
-question 1.
+The user does not log out on purpose. The user decided this on
+2026-11-05. So the case to design for is a session that the network
+ends: a Bluesky refresh that the PDS refuses, or a revoked Mastodon
+token.
+
+- The service sets `authExpired` on the account. Every device reads the
+  flag from `GET /fleeting-api/accounts` and shows "Log back in".
+- A login on any one device replaces the account on the service. The
+  other devices get the new session on their next call. No device logs
+  in twice.
+- The Accounts sheet keeps its log-out action. It deletes the account
+  from the service, so every device is logged out. There is no
+  per-device log-out.
 
 ### Options not chosen
 
@@ -333,15 +350,6 @@ question 1.
   the iPhone and the laptop.
 - Job 2: two devices with an expired access token at the same time cause
   one `refreshSession` call (service log).
-
-## Open questions
-
-1. **Log out scope.** This plan logs out every device. Another option is
-   "forget on this device" plus "log out everywhere" in the Accounts
-   sheet.
-2. **Revoked Mastodon token.** The service could check
-   `verify_credentials` once a day and set `authExpired`. Today a revoked
-   token is not detected (see `CLAUDE.md`, Fixed accounts).
 
 ## Out of scope
 
