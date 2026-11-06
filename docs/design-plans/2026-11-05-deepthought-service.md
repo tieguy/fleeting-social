@@ -17,11 +17,10 @@ all of the user's devices. It has two jobs, built in this order:
    Bluesky refresh token and the only process that refreshes it.
 
 The service is on the same origin as the app, under `/fleeting-api/`. A
-browser authenticates with a device cookie. The service issues that
-cookie only after the browser proves that it is logged in to one of the
-accounts in `FLEETING_ACCOUNTS`. Job 1 builds this authentication, so job
-2 adds no new trust step. Job 2 adds a passkey, so a new device can pair
-with one tap.
+browser authenticates with a passkey, once for each device, and then
+with a device cookie. The user has a passkey manager on every device, and
+the passkey syncs between them. Job 1 builds this authentication, so job
+2 adds no new trust step.
 
 ## Definition of Done
 
@@ -30,8 +29,10 @@ Job 1 (LUI-276):
 - A Quadlet runs the service on deepthought. It publishes no port on the
   host. The Fleeting Caddy container sends `/fleeting-api/*` to it on a
   private Podman network.
-- A browser that is logged in to a fixed account gets a device cookie
-  with no user action. A request without a valid cookie gets 401.
+- A device pairs with one passkey tap and gets a device cookie. A
+  request without a valid cookie gets 401.
+- The first passkey registers with a one-time setup code from the
+  service's log.
 - `src/utils/foryou-store.js` reads and writes through the service. Two
   devices show the same last read, the same shown posts and the same
   verdicts.
@@ -50,7 +51,6 @@ Job 2 (LUI-277):
   for a new access token. The service refreshes at most once for each
   rotation, for all devices.
 - The service alone decides that a Bluesky session is dead.
-- A device with no account can pair with a passkey.
 - `CLAUDE.md` describes the new session model.
 
 ## Glossary
@@ -62,6 +62,9 @@ Job 2 (LUI-277):
 - **Device cookie**: A random token that the service issues to one
   device.
 - **Pairing**: The exchange that gives a device its cookie.
+- **Passkey**: A WebAuthn credential for the relying party ID
+  `fleeting.peafowl-polaris.ts.net`, kept in iCloud Keychain or
+  1Password.
 - **Access token**: The short-lived Bluesky `accessJwt`. The PDS sets its
   expiry.
 - **Refresh token**: The Bluesky `refreshJwt`. Each use rotates it.
@@ -86,26 +89,22 @@ file permission would not stop them.
 
 ## Authentication
 
-### Decision: device cookie, issued after account proof
+### Decision: passkey, then a device cookie
+
+A passkey is the only proof of identity. The device cookie only
+remembers, for one device, that the passkey was used there.
 
 Pairing:
 
 1. The app calls `GET /fleeting-api/session`. If the cookie is valid, the
    service returns 200 and pairing stops here.
-2. On 401, the app sends `POST /fleeting-api/pair` with the credential of
-   one logged-in fixed account:
-   - Mastodon: the access token.
-   - Bluesky: the access token.
-3. The service checks the credential against the account's own server.
-   It takes the server from its own configuration, never from the
-   request:
-   - Mastodon: `GET https://<instance>/api/v1/accounts/verify_credentials`.
-     The `acct` must equal the fixed account's username.
-   - Bluesky: the service resolves the fixed handle to a DID, and the DID
-     to its PDS. Then it calls `com.atproto.server.getSession` on that
-     PDS. The `did` must equal the resolved DID.
+2. On 401, the app shows "Unlock Fleeting". A tap starts a WebAuthn
+   assertion (`navigator.credentials.get`) with a challenge from
+   `POST /fleeting-api/pair/options`.
+3. The app sends the assertion to `POST /fleeting-api/pair`. The service
+   verifies it against the stored public keys.
 4. On success, the service creates a device token and returns it as a
-   cookie. It does not store the account credential in job 1.
+   cookie.
 
 Cookie: `HttpOnly; Secure; SameSite=Strict; Path=/fleeting-api; Max-Age`
 one year. Each use moves the expiry forward. The service stores a SHA-256
@@ -118,38 +117,51 @@ Cross-site requests: the service rejects a request whose
 header check also stops a cross-site POST that needs no cookie, such as
 `/pair`. The service sends no CORS headers.
 
+Verification: the service verifies registrations and assertions with
+[`@simplewebauthn/server`](https://github.com/MasterKale/SimpleWebAuthn).
+WebAuthn verification is crypto and CBOR parsing, so the plan uses a
+vetted library instead of new code. The browser side uses the native
+`navigator.credentials` API. The service stores each passkey's public key
+and sign counter in `devices.json`.
+
+### Registering passkeys
+
+Registration is the step that must not be open to any device on the
+tailnet.
+
+- **First passkey.** When `devices.json` holds no passkey, the service
+  makes a random one-time setup code at start and writes it to its log.
+  The user reads it with
+  `journalctl --user -u fleeting-service`, or asks a Claude session on
+  deepthought for it. The app's "Set up Fleeting" form takes the code and
+  registers a passkey. The code works once and expires after 15 minutes.
+  Then the service makes no more codes.
+- **More passkeys.** A paired device can register another passkey, for
+  example a second passkey manager, from the Accounts sheet.
+- **Recovery.** If every passkey is lost, the user deletes the passkeys
+  from `devices.json` and restarts the service. It then makes a new setup
+  code.
+
 Why this choice:
 
-- The proof is the same in job 1 and job 2. In job 2, a new device pairs
-  with a Mastodon OAuth login or a Bluesky app password, and the service
-  then holds that credential.
-- In job 1 pairing needs no UI. Every device that can open For You is
-  logged in already.
-- A device on the tailnet with no account credential cannot pair.
+- One mechanism for both jobs. It does not depend on social.coop or the
+  Bluesky PDS being up, and it needs no code that checks Mastodon or
+  Bluesky credentials.
+- It identifies the person at the device: a passkey needs Face ID, a
+  fingerprint or a device PIN. A process on Home Assistant or the NAS has
+  no passkey and cannot pair.
+- In job 2, a new device gets both accounts from one tap, with no
+  Mastodon OAuth round trip and no app password.
+- The cost is one tap on each device, once a year or after the browser
+  clears its cookies.
 
-### Job 2: passkeys
-
-In job 2, pairing a new device with an account means a full login: a
-Mastodon OAuth round trip, or typing a Bluesky app password. A passkey
-makes this one tap with Face ID or a fingerprint.
-
-- A paired device registers a passkey from the Accounts sheet. The
-  relying party ID is `fleeting.peafowl-polaris.ts.net`. The passkey
-  syncs through iCloud Keychain or 1Password, so the user's other devices
-  have it.
-- On a new device, `/pair` accepts a passkey assertion as a third proof,
-  next to the Mastodon and Bluesky tokens.
-- The service verifies registrations and assertions with
-  [`@simplewebauthn/server`](https://github.com/MasterKale/SimpleWebAuthn).
-  WebAuthn verification is crypto and CBOR parsing, so the plan uses a
-  vetted library instead of new code. This is the service's one npm
-  dependency. The deploy script runs `npm ci --omit=dev` in `service/` in
-  the clean clone, before it copies the code.
-- The service stores each passkey's public key and sign counter in
-  `devices.json`.
-
-Job 1 does not use passkeys. Its pairing needs no user action, and a
-passkey needs a tap.
+Not checked: WebAuthn in an iOS home-screen web app. A PWA vendor's demo
+claims to create a passkey from the iPhone home screen
+([Progressier](https://progressier.com/pwa-capabilities/biometric-authentication-with-passkeys)),
+but no Apple source confirms it. The home-screen app has its own cookie
+store, so it must pair on its own. The first step of the build is a test
+page that runs a passkey registration and assertion from the home-screen
+app on the iPhone and the iPad.
 
 ### Tailscale layer
 
@@ -164,8 +176,8 @@ a requirement. The service logs the headers of item 2 if they are present.
    Assistant and the NAS before they reach HTTP. Two cautions: the same
    grant also controls the static app, and a new device needs a policy
    edit before it can open Fleeting. The user decided on 2026-11-05 not
-   to change the tailnet policy for now. The device cookie and the
-   passkey do not depend on it.
+   to change the tailnet policy for now. The passkey does not depend on
+   it.
 2. **Identity headers and app capabilities.** `tailscale serve` adds
    `Tailscale-User-Login` to proxied requests. With `--accept-app-caps`
    (Tailscale 1.92 or later, deepthought has 1.104.2), it also forwards
@@ -187,17 +199,20 @@ a requirement. The service logs the headers of item 2 if they are present.
    user from the tailnet
    ([tsidp](https://tailscale.com/docs/features/tsidp)). It is
    experimental, and it identifies the user, not the device, so it gives
-   no more than item 2. The passkey is the per-device login factor in
-   this plan.
+   no more than item 2. The passkey is the login factor in this plan.
 
 ### Options not chosen
 
 - **Tailnet membership only.** Enough for job 1, not for job 2 (see
   Threat model). Job 1 would then need a second authentication step
   later, and every job 1 endpoint would change.
-- **A pairing code.** The service prints a code on deepthought, and the
-  user types it on the device. It works with no account, but each new
-  device needs a shell on deepthought.
+- **Account proof.** The browser sends its Mastodon or Bluesky access
+  token, and the service checks it with `verify_credentials` or
+  `getSession` on the account's own server. Pairing then needs no tap in
+  job 1. But it adds a second mechanism, it fails when social.coop or the
+  PDS is down, and in job 2 a new device has no token to send.
+- **A setup code for every device.** Each new device needs the service
+  log. The passkey uses the setup code once.
 
 ## Routing and deployment
 
@@ -224,14 +239,16 @@ because `public/sw.js` caches responses whose path matches
   `~/containers/volumes/fleeting-service/current`, and the data
   read-write, from `~/containers/volumes/fleeting-service/data`.
 
-**Code.** The service is in `service/` in this repo. It uses only Node
-built-ins (`node:http`, `node:crypto`, `node:fs`, `fetch`). So the
-container needs no `npm install` and runs from the bind-mounted source.
+**Code.** The service is in `service/` in this repo. It uses Node
+built-ins (`node:http`, `node:crypto`, `node:fs`, `fetch`) and one npm
+dependency, `@simplewebauthn/server`. The container runs from the
+bind-mounted source and does no `npm install` of its own.
 Pure modules (the merge, the For You operations) have Vitest tests next to
 them.
 
 **Deploys.** `fleeting-deploy.sh` already builds each new commit in a
-clean clone. It also copies `service/` to
+clean clone. It also runs `npm ci --omit=dev` in `service/`, copies
+`service/` to
 `~/containers/volumes/fleeting-service/releases/<sha>`, swaps the
 `current` symlink, and restarts the unit only when `service/` changed.
 After the restart it checks `GET /fleeting-api/health` through Caddy. If
@@ -307,7 +324,7 @@ The service, for that call:
 Login: the browser sends the handle and the app password to
 `POST /fleeting-api/accounts/bluesky`. The service calls
 `com.atproto.server.createSession` and stores the session. It does not
-store the app password. This call also pairs the device.
+store the app password.
 
 The three rules in "Session death is proven, never announced" move to the
 service:
@@ -376,7 +393,7 @@ token.
 
 ## What job 1 does so that job 2 is not blocked
 
-- Authentication proves a fixed account, not only the tailnet.
+- Authentication is a passkey, not tailnet membership.
 - The cookie is per device and revocable. Job 2 needs this before the
   service holds credentials.
 - The data directory is mode 600 from the start.
@@ -399,11 +416,10 @@ token.
 ## Verification
 
 - Unit tests: the import merge, the digest and verdict operations, the
-  caps, the pairing checks (with stubbed instance and PDS responses), and
-  job 2's refresh decision.
-- A Playwright spec that runs the service against stubbed Mastodon and
-  PDS servers: pairing, a write on one browser context, a read on a
-  second context.
+  caps, the setup code (one use, expiry), and job 2's refresh decision.
+- A Playwright spec with the Chromium virtual authenticator: setup code,
+  registration, pairing a second browser context, a write on one context
+  and a read on the other.
 - On deepthought: `curl` from another tailnet device without a cookie
   gets 401. A cross-site POST gets 403. The For You state is the same on
   the iPhone and the laptop.
