@@ -117,12 +117,37 @@ Cross-site requests: the service rejects a request whose
 header check also stops a cross-site POST that needs no cookie, such as
 `/pair`. The service sends no CORS headers.
 
-Verification: the service verifies registrations and assertions with
-[`@simplewebauthn/server`](https://github.com/MasterKale/SimpleWebAuthn).
-WebAuthn verification is crypto and CBOR parsing, so the plan uses a
-vetted library instead of new code. The browser side uses the native
-`navigator.credentials` API. The service stores each passkey's public key
-and sign counter in `devices.json`.
+Verification follows the user's Mnemion server
+(`~/Projects/Self/mnemion`, `mnemion-js/shared/Auth/passkey.ts` and
+`shared/Routing/routes/auth.ts`), which does passkey login with the same
+library:
+
+- The service verifies registrations and assertions with
+  [`@simplewebauthn/server`](https://github.com/MasterKale/SimpleWebAuthn).
+  WebAuthn verification is crypto and CBOR parsing, so the plan uses a
+  vetted library instead of new code.
+- The app uses
+  [`@simplewebauthn/browser`](https://github.com/MasterKale/SimpleWebAuthn)
+  for the JSON encoding, lazy-loaded with the pairing screen. Mnemion
+  loads it from esm.sh, which `script-src 'self'` blocks here, so the app
+  bundles it.
+- User verification is required on registration and on assertion
+  (`userVerification: "required"`, `requireUserVerification: true`). So
+  the passkey proves the person, not only an unlocked device.
+- `attestationType: "none"` and `residentKey: "preferred"`.
+- Each attempt gets its own challenge ID. The service keeps the challenge
+  in memory for 10 minutes and deletes it when it is read, so it works
+  once.
+- The RP ID (`fleeting.peafowl-polaris.ts.net`) and the expected origin
+  (`https://fleeting.peafowl-polaris.ts.net`) come from configuration.
+  Mnemion reads them from the request URL. Here the request reaches the
+  service through `tailscale serve` and Caddy, so its URL names the
+  internal host.
+- A verified assertion with no `authenticationInfo` counts as a failure,
+  as in Mnemion. The service stores the new sign counter after each
+  login.
+- The service stores each passkey's credential ID, public key, counter
+  and transports in `devices.json`.
 
 ### Registering passkeys
 
@@ -141,6 +166,16 @@ tailnet.
 - **Recovery.** If every passkey is lost, the user deletes the passkeys
   from `devices.json` and restarts the service. It then makes a new setup
   code.
+- **Revoke all.** A command in the container deletes every device token,
+  so every device must tap again. Mnemion has the same control as a
+  session epoch.
+
+Any process that runs as `louie` on deepthought can read the setup code
+from the journal, Claude sessions included. The code is valid only while
+no passkey exists, for 15 minutes, and once. The threat model already
+trusts these processes. Mnemion bootstraps from a master secret that its
+setup script prints. A one-time code is the same idea with no secret to
+keep afterwards.
 
 Why this choice:
 
