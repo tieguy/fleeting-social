@@ -162,7 +162,7 @@ tailnet.
 - **First passkey.** When `devices.json` holds no passkey, the service
   makes a random one-time setup code at start and writes it to its log.
   The user reads it with
-  `journalctl --user -u fleeting-service`, or asks a Claude session on
+  `podman logs fleeting-service`, or asks a Claude session on
   deepthought for it. The app's "Set up Fleeting" form takes the code and
   registers a passkey. The code works once and expires after 15 minutes.
   Then the service makes no more codes.

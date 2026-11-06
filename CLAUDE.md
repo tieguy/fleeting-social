@@ -146,7 +146,7 @@ of that plan (account sessions) is not built yet.
   `src/utils/fleeting-service.js`.
 - **Authentication.** A passkey is the only proof of identity. The first
   passkey registers with a one-time setup code that the service writes to
-  its log when it starts with no passkey (`journalctl --user -u
+  its log when it starts with no passkey (`podman logs
   fleeting-service`). The code works once, for 15 minutes, and closes
   after 10 wrong tries. Each other device unlocks with the passkey and
   gets an HttpOnly, `SameSite=Strict` device cookie for one year. A
