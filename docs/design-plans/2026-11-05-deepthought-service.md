@@ -195,13 +195,14 @@ Why this choice:
 - The cost is one tap on each device, once a year or after the browser
   clears its cookies.
 
-Not checked: WebAuthn in an iOS home-screen web app. A PWA vendor's demo
-claims to create a passkey from the iPhone home screen
-([Progressier](https://progressier.com/pwa-capabilities/biometric-authentication-with-passkeys)),
-but no Apple source confirms it. The home-screen app has its own cookie
-store, so it must pair on its own. The first step of the build is a test
-page that runs a passkey registration and assertion from the home-screen
-app on the iPhone and the iPad.
+WebAuthn in an iOS home-screen web app works on the iPhone (iOS 18.7,
+2026-11-06). A test page added to the home screen, with
+`navigator.standalone` true, created a passkey with the service's options
+and logged in with it, both with the credential ID and as a discoverable
+credential. The authenticator was the platform authenticator, and the
+flags were UV, backup-eligible and backed-up, so the passkey is in iCloud
+Keychain and syncs. The iPad is not tested yet. The home-screen app has its
+own cookie store, so it must pair on its own.
 
 ### Tailscale layer
 
