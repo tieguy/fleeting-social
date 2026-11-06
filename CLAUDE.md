@@ -151,7 +151,10 @@ of that plan (account sessions) is not built yet.
   after 10 wrong tries. Each other device unlocks with the passkey and
   gets an HttpOnly, `SameSite=Strict` device cookie for one year. A
   request whose `Sec-Fetch-Site` is present and not `same-origin` gets
-  403. The Accounts sheet can add another passkey. `admin.js` in the
+  403. The page `/_fleeting-unlock` (`src/pages/fleeting-unlock.jsx`,
+  reached by typing its URL) sets up or unlocks a device at any time,
+  conversation mode included. It and the Accounts sheet can add another
+  passkey. `admin.js` in the
   container lists and revokes devices.
 - **Data.** JSON files in `~/containers/volumes/fleeting-service/data/`,
   directory mode 700 and files mode 600: `devices.json` (passkeys and the
@@ -195,8 +198,9 @@ a reply or mention to the user. The design plan is
   window edge and re-checks when the page becomes visible. In conversation
   mode, `App` in `src/app.jsx` renders `ConversationRoutes` instead of the
   normal route trees and chrome: the list, a thread, `/notifications`,
-  login, welcome, and the For You lab (`/_foryou-lab`, an experiment
-  reached only by typing its URL). Every other path redirects to
+  login, welcome, the For You lab (`/_foryou-lab`, an experiment
+  reached only by typing its URL) and the Fleeting service unlock page
+  (`/_fleeting-unlock`, which has no links). Every other path redirects to
   `/conversations`.
   Entry into the mode waits until the composer closes, then
   `hideAllModals()` closes any sheet left open.

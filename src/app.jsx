@@ -98,6 +98,7 @@ const Sandbox =
     : () => null;
 const ForYouLab = lazy(() => import('./pages/foryou-lab'));
 const ForYou = lazy(() => import('./pages/foryou'));
+const FleetingUnlock = lazy(() => import('./pages/fleeting-unlock'));
 
 // Lazy load MockHome component only in development (not FLEETING_DEV)
 const MockHome = lazy(() => import('./pages/mock-home'));
@@ -729,6 +730,17 @@ function ConversationRoutes() {
           </AuthRoute>
         }
       />
+      {/* Setting up or unlocking the Fleeting service is open at any time */}
+      <Route
+        path="/_fleeting-unlock"
+        element={
+          <AuthRoute>
+            <Suspense fallback={<Loader />}>
+              <FleetingUnlock />
+            </Suspense>
+          </AuthRoute>
+        }
+      />
       {/* The For You experiment stays open in conversation mode while its
           rules are being chosen */}
       <Route
@@ -902,6 +914,16 @@ function SecondaryRoutes() {
           <AuthRoute>
             <Suspense fallback={<Loader />}>
               <ForYou />
+            </Suspense>
+          </AuthRoute>
+        }
+      />
+      <Route
+        path="/_fleeting-unlock"
+        element={
+          <AuthRoute>
+            <Suspense fallback={<Loader />}>
+              <FleetingUnlock />
             </Suspense>
           </AuthRoute>
         }

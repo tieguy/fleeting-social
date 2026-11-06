@@ -139,6 +139,7 @@ msgstr "Go to account page"
 #: src/components/timeline.jsx:663
 #: src/components/timeline2.jsx:701
 #: src/pages/dm-thread.jsx:171
+#: src/pages/fleeting-unlock.jsx:62
 #: src/pages/foryou.jsx:430
 #: src/pages/home.jsx:303
 #: src/pages/messages.jsx:200
@@ -2853,6 +2854,7 @@ msgid "Fleeting keeps this page's state on deepthought. Unlock this device once 
 msgstr "Fleeting keeps this page's state on deepthought. Unlock this device once with your passkey."
 
 #: src/components/service-unlock.jsx:127
+#: src/pages/fleeting-unlock.jsx:20
 msgid "Unlock Fleeting"
 msgstr "Unlock Fleeting"
 
@@ -4534,6 +4536,19 @@ msgstr ""
 #: src/pages/filters.jsx:798
 msgid "Never expires"
 msgstr ""
+
+#: src/pages/fleeting-unlock.jsx:44
+msgid "Fleeting service"
+msgstr "Fleeting service"
+
+#. placeholder {0}: state.error
+#: src/pages/fleeting-unlock.jsx:59
+msgid "Failed to load: {0}"
+msgstr "Failed to load: {0}"
+
+#: src/pages/fleeting-unlock.jsx:68
+msgid "This device is unlocked for the Fleeting service."
+msgstr "This device is unlocked for the Fleeting service."
 
 #. placeholder {0}: followedHashtags.length
 #: src/pages/followed-hashtags.jsx:71
