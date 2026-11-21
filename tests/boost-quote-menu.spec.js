@@ -234,3 +234,28 @@ test('context menu offers the same boost/quote submenu', async ({ page }) => {
     page.getByRole('menuitem', { name: 'Quote without attribution' }),
   ).toBeVisible();
 });
+
+test('a status passed as a prop, not in the store, keeps the boost/quote submenu', async ({
+  page,
+}) => {
+  // Search results render <Status status={item}> and are never saved to
+  // states.statuses — the menu must not depend on the store lookup alone.
+  await setupLoggedInEnv(page);
+  await page.route('**/api/v2/search*', (route) =>
+    route.fulfill({
+      json: {
+        statuses: [createMockPost(123, 0)],
+        accounts: [],
+        hashtags: [],
+      },
+    }),
+  );
+  await page.goto('/#/test.social/search?q=hello');
+  const result = page.locator('article.status').first();
+  await expect(result).toBeVisible();
+  await result.locator('.content').click({ button: 'right' });
+  await page.getByText('Boost…').click();
+  await expect(
+    page.getByRole('menuitem', { name: 'Quote with link' }),
+  ).toBeVisible();
+});

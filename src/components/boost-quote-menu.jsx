@@ -36,8 +36,12 @@ const { DEV } = import.meta.env;
 // `children` is the trigger: the menu button when !subMenu, the submenu
 // label when subMenu. `showBoostAs={false}` omits the "Boost as @…" items
 // (the action-bar variant, where they live in the overflow menu instead).
+// `status` is optional: the status in hand, as `Status` takes it — used
+// when present, else looked up in the store. Statuses that are never
+// saved to the store (e.g. search results) still get their menu.
 function BoostQuoteMenu({
   statusID,
+  status: propStatus,
   instance: propInstance,
   subMenu = false,
   showBoostAs = true,
@@ -55,11 +59,12 @@ function BoostQuoteMenu({
     instance === currentInstance ||
     (authenticated && hasAccountInInstance(instance));
 
-  let sKey = statusKey(statusID, instance);
+  let sKey = statusKey(statusID || propStatus?.id, instance);
   const snapStates = useSnapshot(states);
-  let status = snapStates.statuses[sKey] || snapStates.statuses[statusID];
-  if (status) {
-    sKey = statusKey(status.id, instance);
+  let status = propStatus;
+  if (!status) {
+    status = snapStates.statuses[sKey] || snapStates.statuses[statusID];
+    sKey = statusKey(status?.id, instance);
   }
 
   const [renderingCard, setRenderingCard] = useState(false);

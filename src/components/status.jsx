@@ -1231,7 +1231,12 @@ function Status({
                 <ReplyMenuContent />
               </MenuItem>
             )}
-            <BoostQuoteMenu subMenu statusID={id} instance={instance}>
+            <BoostQuoteMenu
+              subMenu
+              statusID={id}
+              status={status}
+              instance={instance}
+            >
               {canQuote ? (
                 <span class="icon">
                   <Icon icon="rocket" />
@@ -3034,6 +3039,7 @@ function Status({
                   <BoostQuoteMenu
                     showBoostAs={false}
                     statusID={id}
+                    status={status}
                     instance={instance}
                   >
                     <StatusButton
