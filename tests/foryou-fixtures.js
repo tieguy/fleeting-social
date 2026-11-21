@@ -119,6 +119,13 @@ export function seedWithBsky(page) {
   return seedAccounts(page, [ACCOUNT, BSKY_ACCOUNT]);
 }
 
+// Both Bluesky accounts on top of the Mastodon one, for same-network
+// cross-target quotes (a quote of a Bluesky post reaches every Bluesky
+// account — the ids are network-global)
+export function seedWithTwoBsky(page) {
+  return seedAccounts(page, [ACCOUNT, BSKY_ACCOUNT, BSKY_ACCOUNT_2]);
+}
+
 // How many reblog calls hit the stubbed Mastodon server; reset on every
 // stubMastodon so tests stay independent
 export let reblogCalls = 0;
@@ -169,11 +176,13 @@ export function stubMastodon(page) {
 // far-future exp, and the lexicon validates the CID's format.
 export const BSKY_DID = 'did:plc:testcarol';
 
-export function fakeJwt(scope) {
+// `sub` is the account's did, so each stubbed Bluesky account gets its own
+// token pair (both hit the same https://bsky.social PDS stub)
+export function fakeJwt(scope, sub = BSKY_DID) {
   const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
   return `${b64({ alg: 'none', typ: 'JWT' })}.${b64({
     scope,
-    sub: BSKY_DID,
+    sub,
     exp: 4102444800,
     iat: 1,
   })}.x`;
@@ -206,6 +215,35 @@ export const BSKY_ACCOUNT = {
   },
 };
 
+// A second Bluesky account on the same PDS, for same-network cross-targets.
+// Its did deliberately differs from any digest post's author did: For You
+// drops self-authored posts, so the second account must not own the post
+// the test quotes.
+export const BSKY_DID_2 = 'did:plc:testerin';
+
+const BSKY2_ACCESS_JWT = fakeJwt('com.atproto.access', BSKY_DID_2);
+const BSKY2_REFRESH_JWT = fakeJwt('com.atproto.refresh', BSKY_DID_2);
+export const BSKY_ACCOUNT_2 = {
+  info: {
+    id: BSKY_DID_2,
+    username: 'erin.bsky.social',
+    acct: 'erin.bsky.social',
+    displayName: 'Erin',
+    avatar: AVATAR,
+    avatarStatic: AVATAR,
+  },
+  instanceURL: 'bsky.social',
+  accountType: 'bluesky',
+  accessToken: BSKY2_ACCESS_JWT,
+  blueskySession: {
+    did: BSKY_DID_2,
+    handle: 'erin.bsky.social',
+    accessJwt: BSKY2_ACCESS_JWT,
+    refreshJwt: BSKY2_REFRESH_JWT,
+    active: true,
+  },
+};
+
 const BSKY_PROFILE = {
   did: BSKY_DID,
   handle: 'carol.bsky.social',
@@ -216,30 +254,119 @@ const BSKY_PROFILE = {
   postsCount: 100,
 };
 
+const BSKY_PROFILE_2 = {
+  did: BSKY_DID_2,
+  handle: 'erin.bsky.social',
+  displayName: 'Erin',
+  avatar: AVATAR,
+  followersCount: 10,
+  followsCount: 5,
+  postsCount: 100,
+};
+
+// did → session material for each stubbed Bluesky account. stubBluesky
+// answers session/profile calls with the identity parsed from the
+// request's bearer token, so both accounts validate against the one stub
+const BSKY_SESSIONS = {
+  [BSKY_DID]: {
+    profile: BSKY_PROFILE,
+    accessJwt: BSKY_ACCESS_JWT,
+    refreshJwt: BSKY_REFRESH_JWT,
+  },
+  [BSKY_DID_2]: {
+    profile: BSKY_PROFILE_2,
+    accessJwt: BSKY2_ACCESS_JWT,
+    refreshJwt: BSKY2_REFRESH_JWT,
+  },
+};
+
+// The did this request is authenticated as — the bearer JWT's `sub`
+function bearerDid(route) {
+  const auth = route.request().headers().authorization || '';
+  const payload = auth.replace(/^Bearer /, '').split('.')[1];
+  if (!payload) return null;
+  try {
+    return JSON.parse(Buffer.from(payload, 'base64url').toString()).sub;
+  } catch {
+    return null;
+  }
+}
+
+// Bodies of the Bluesky write endpoints, captured by stubBluesky and
+// reset on every stubBluesky so tests stay independent:
+// com.atproto.repo.createRecord (single posts) and applyWrites (threads)
+export let bskyWrites = [];
+export let bskyThreadWrites = [];
+
+// POST bodies at the Mastodon compose endpoint, captured by
+// stubMastodonPost
+export let mastoPosts = [];
+
+// Records POSTs to the Mastodon compose endpoint so a test can assert on
+// the real request body. Registered after stubMastodon, so it wins for
+// this exact URL while the rest of the instance keeps stubMastodon's
+// replies.
+export function stubMastodonPost(page) {
+  mastoPosts = [];
+  return page.route(`https://${DOMAIN}/api/v1/statuses`, (route) => {
+    mastoPosts.push(route.request().postDataJSON());
+    return route.fulfill({ json: { ...HOME[0], id: 'new1' } });
+  });
+}
+
 // Stubs the Bluesky account's PDS. `feed` is an array of
 // app.bsky.feed.defs#feedViewPost shapes for the home timeline; anything
 // else the app asks the PDS for aborts, as stubMastodon does for the
 // Mastodon instance.
 export function stubBluesky(page, feed = []) {
+  bskyWrites = [];
+  bskyThreadWrites = [];
+  const feedPosts = feed.map((item) => item.post).filter(Boolean);
   return page.route('https://bsky.social/**', (route) => {
-    const rpc = new URL(route.request().url()).pathname.replace('/xrpc/', '');
-    const session = {
-      did: BSKY_DID,
-      handle: 'carol.bsky.social',
+    const url = new URL(route.request().url());
+    const rpc = url.pathname.replace('/xrpc/', '');
+    const did = bearerDid(route) || BSKY_DID;
+    const session = BSKY_SESSIONS[did] || BSKY_SESSIONS[BSKY_DID];
+    const fullSession = {
+      did,
+      handle: session.profile.handle,
       active: true,
-      accessJwt: BSKY_ACCESS_JWT,
-      refreshJwt: BSKY_REFRESH_JWT,
+      accessJwt: session.accessJwt,
+      refreshJwt: session.refreshJwt,
     };
     const replies = {
-      'com.atproto.server.getSession': session,
-      'com.atproto.server.refreshSession': session,
-      'app.bsky.actor.getProfile': BSKY_PROFILE,
+      'com.atproto.server.getSession': fullSession,
+      'com.atproto.server.refreshSession': fullSession,
+      'app.bsky.actor.getProfile':
+        BSKY_SESSIONS[url.searchParams.get('actor')]?.profile ||
+        session.profile,
       'app.bsky.actor.getPreferences': { preferences: [] },
       'app.bsky.feed.getTimeline': { feed },
       'app.bsky.feed.getActorLikes': { feed: [] },
       'app.bsky.feed.getAuthorFeed': { feed: [] },
       'app.bsky.graph.getLists': { lists: [] },
+      // Hydration by uri — quote resolution asks for the quoted post's cid
+      'app.bsky.feed.getPosts': {
+        posts: feedPosts.filter((p) =>
+          url.searchParams.getAll('uris').includes(p.uri),
+        ),
+      },
     };
+    // Write endpoints: capture the body so tests assert on the real record
+    if (rpc === 'com.atproto.repo.createRecord') {
+      bskyWrites.push(route.request().postDataJSON());
+      return route.fulfill({
+        json: { uri: `at://${did}/app.bsky.feed.post/new1`, cid: CID },
+      });
+    }
+    if (rpc === 'com.atproto.repo.applyWrites') {
+      bskyThreadWrites.push(route.request().postDataJSON());
+      return route.fulfill({
+        json: {
+          results: [{ uri: `at://${did}/app.bsky.feed.post/new1`, cid: CID }],
+        },
+      });
+    }
     const body = replies[rpc];
     return body ? route.fulfill({ json: body }) : route.abort();
   });

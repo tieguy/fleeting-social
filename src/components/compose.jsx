@@ -11,6 +11,7 @@ import { uid } from 'uid/single';
 import { useSnapshot } from 'valtio';
 
 import supportedLanguages from '../data/status-supported-languages';
+import { accountRoster } from '../utils/acting-accounts';
 import { api, getPreferences } from '../utils/api';
 import { isBlueskyAccount, isBlueskyInstance } from '../utils/bluesky';
 import { blueskyInstanceInfo } from '../utils/bluesky/convert';
@@ -40,7 +41,6 @@ import RTF from '../utils/relative-time-format';
 import showToast from '../utils/show-toast';
 import states, { saveStatus } from '../utils/states';
 import store from '../utils/store';
-import { accountRoster } from '../utils/acting-accounts';
 import {
   getAPIVersions,
   getAccountByInstance,
@@ -221,10 +221,12 @@ function Compose({
       : getCurrentInstanceConfiguration();
   console.log('⚙️ Configuration', configuration);
 
-  // Compose targets: for a new post, EVERY logged-in account is a peer
-  // checkbox — the active account is not special, and a post can go only
-  // to a non-active account. Replies/quotes/edits stay network-bound.
-  const composeTargetable = !editStatus && !replyToStatus && !quoteStatus;
+  // Compose targets: for a new post or a quote, EVERY logged-in account is
+  // a peer checkbox — the active account is not special, and a post can go
+  // only to a non-active account. Replies/edits stay network-bound (they
+  // belong to one thread on one instance); quotes fan out — native on
+  // targets that can quote, the quoted post's URL appended elsewhere.
+  const composeTargetable = !editStatus && !replyToStatus;
   const targetRoster = useMemo(
     () =>
       composeTargetable
@@ -1775,10 +1777,49 @@ function Compose({
                         mediaAttachments,
                         moreSegments,
                       });
+                      // A quote fans out per target: a Bluesky quote is
+                      // native on EVERY Bluesky account (ids are
+                      // network-global) and a link everywhere else; a
+                      // Mastodon quote is native only on accounts on the
+                      // quoted post's own instance (API v7+). Cross-instance
+                      // Mastodon quoting (search resolution) is out of
+                      // scope — those targets get the link.
+                      const quoteIsBluesky =
+                        currentQuoteStatus?._bluesky ||
+                        isBlueskyInstance(currentQuoteStatus?._instance);
+                      const crossShared = {
+                        spoilerText,
+                        sensitive: sensitive || sensitiveMedia,
+                        language,
+                        visibility: visibility || 'public',
+                      };
                       for (const account of crossTargets) {
                         const acctName =
                           account.info.acct || account.info.username;
                         try {
+                          const nativeQuote = currentQuoteStatus
+                            ? quoteIsBluesky
+                              ? isBlueskyAccount(account)
+                              : account.instanceURL ===
+                                  currentQuoteStatus?._instance &&
+                                supportsNativeQuote(account.instanceURL)
+                            : false;
+                          // Link targets carry the quoted post's URL on
+                          // segment 0. The char counter counts only the
+                          // typed text, so the appended URL can push a link
+                          // target over its server limit — the per-target
+                          // failure toast reports that.
+                          const targetSegments = nativeQuote
+                            ? crossSegments
+                            : currentQuoteStatus?.url
+                              ? [
+                                  {
+                                    ...crossSegments[0],
+                                    text: `${crossSegments[0].text}\n${currentQuoteStatus.url}`,
+                                  },
+                                  ...crossSegments.slice(1),
+                                ]
+                              : crossSegments;
                           const {
                             statuses: crossStatuses,
                             failedAtIndex: crossFailedAt,
@@ -1786,13 +1827,14 @@ function Compose({
                             skippedMedia,
                           } = await publishThread({
                             account,
-                            segments: crossSegments,
-                            shared: {
-                              spoilerText,
-                              sensitive: sensitive || sensitiveMedia,
-                              language,
-                              visibility: visibility || 'public',
-                            },
+                            segments: targetSegments,
+                            shared: nativeQuote
+                              ? {
+                                  ...crossShared,
+                                  quotedStatusId: currentQuoteStatus.id,
+                                  quoteApprovalPolicy,
+                                }
+                              : crossShared,
                             onProgress: (i, state) => {
                               if (
                                 state === 'posting' &&

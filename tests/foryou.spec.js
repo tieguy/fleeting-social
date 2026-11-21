@@ -12,14 +12,20 @@ import {
   ACCOUNT_B,
   ACCOUNT,
   AVATAR,
+  BSKY_DID,
+  BSKY_DID_2,
   CID,
   HOME,
+  bskyWrites,
+  mastoPosts,
   reblogCalls,
   seed,
   seedAccounts,
   seedWithBsky,
+  seedWithTwoBsky,
   stubBluesky,
   stubMastodon,
+  stubMastodonPost,
 } from './foryou-fixtures.js';
 
 // The For You page against a stubbed Mastodon server and a stubbed Fleeting
@@ -255,6 +261,99 @@ test('a Bluesky digest post offers the native quote', async ({ page }) => {
 
   await quote.click();
   await expect(page.locator('#compose-container')).toBeVisible();
+});
+
+// Opens the composer with a NATIVE quote of the digest's Bluesky post
+// (T4's flow: rocket → Quote), with the Mastodon compose POSTs captured
+async function openNativeQuote(page) {
+  const item = page
+    .locator('.foryou-posts > li')
+    .filter({ hasText: 'hot Bluesky take' });
+  await openBoostMenu(page, item);
+  await page.getByRole('menuitem', { name: 'Quote', exact: true }).click();
+  const compose = page.locator('#compose-container');
+  await expect(compose).toBeVisible();
+  return compose;
+}
+
+test('quoting a Bluesky post reaches both networks, each its own way', async ({
+  page,
+}) => {
+  await seedWithBsky(page);
+  await stubBluesky(page, [bskyFeedItem()]);
+  await stubMastodonPost(page);
+  await page.goto('/#/foryou');
+
+  const compose = await openNativeQuote(page);
+
+  // Like a new post, the quote targets every logged-in account, both
+  // networks, all checked
+  await expect(
+    compose.locator('.cross-post-toolbar .account-picker-option'),
+  ).toHaveCount(2);
+  await expect(
+    compose.locator('.cross-post-toolbar input[type=checkbox]:checked'),
+  ).toHaveCount(2);
+
+  await compose.locator('textarea').first().fill('nice one');
+  await compose.locator('button[type=submit]').click();
+
+  // Exactly one Bluesky write (the native quote) and one Mastodon POST
+  // (the link quote)
+  await expect.poll(() => bskyWrites.length).toBe(1);
+  await expect.poll(() => mastoPosts.length).toBe(1);
+
+  // Bluesky quotes natively: the typed text with the quoted record as the
+  // embed, and no post URL in the text
+  const record = bskyWrites[0].record;
+  expect(record.text).toContain('nice one');
+  expect(record.text).not.toContain('bsky.app');
+  expect(record.embed?.$type).toBe('app.bsky.embed.record');
+  expect(record.embed?.record?.uri).toBe(
+    'at://did:plc:testdave/app.bsky.feed.post/hot1',
+  );
+
+  // Mastodon gets the quoted post's URL appended to the text instead, and
+  // no quoted_status_id
+  const { status, quoted_status_id: quotedStatusId } = mastoPosts[0];
+  expect(status).toContain('nice one');
+  expect(status).toContain('bsky.app/profile/dave.bsky.social/post/hot1');
+  expect(quotedStatusId).toBeUndefined();
+});
+
+test('a second same-network account also gets the native quote', async ({
+  page,
+}) => {
+  await seedWithTwoBsky(page);
+  await stubBluesky(page, [bskyFeedItem()]);
+  await stubMastodonPost(page);
+  await page.goto('/#/foryou');
+
+  const compose = await openNativeQuote(page);
+
+  // All three accounts — two Bluesky, one Mastodon — are checked targets
+  await expect(
+    compose.locator('.cross-post-toolbar .account-picker-option'),
+  ).toHaveCount(3);
+  await expect(
+    compose.locator('.cross-post-toolbar input[type=checkbox]:checked'),
+  ).toHaveCount(3);
+
+  await compose.locator('textarea').first().fill('nice one');
+  await compose.locator('button[type=submit]').click();
+
+  // Both Bluesky accounts quote natively (ids are network-global); the
+  // Mastodon account still gets the link
+  await expect.poll(() => bskyWrites.length).toBe(2);
+  await expect.poll(() => mastoPosts.length).toBe(1);
+  expect(bskyWrites.map((w) => w.repo).sort()).toEqual(
+    [BSKY_DID, BSKY_DID_2].sort(),
+  );
+  for (const write of bskyWrites) {
+    expect(write.record.text).toContain('nice one');
+    expect(write.record.embed?.$type).toBe('app.bsky.embed.record');
+  }
+  expect(mastoPosts[0].status).toContain('bsky.app/profile/');
 });
 
 test('a Bluesky post with quotes turned off disables the quote item', async ({
