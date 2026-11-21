@@ -239,7 +239,9 @@ a reply or mention to the user. The design plan is
   Each post is a `Status` in `readOnly` and `previewMode`, with the page's
   own reply, quote, like and share-link buttons. Quote follows
   `getQuotePolicy` in `src/utils/quote-utils.js`, which the full app's
-  quote menu in `status.jsx` also uses. After a post, the composer's toast
+  boost/quote menu (`boost-quote-menu.jsx`) also uses; both quote paths
+  target every logged-in account — native where the target can quote, the
+  post's link elsewhere. After a post, the composer's toast
   opens the conversation thread (`Modals` gets `conversationMode`). `src/components/inert-links.jsx` stops every
   click inside an `<a>` in the capture phase. Only a web link in the post
   text (`.content`, not `.mention`) or a link-preview `a.card` opens, in a

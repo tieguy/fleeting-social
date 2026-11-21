@@ -35,7 +35,8 @@ function ThreadPost({ statusID, instance, focused, nested, masto }) {
   const { favourited, favouritesCount, repliesCount, quotesCount } = status;
 
   // Native quotes follow the post's quote policy. An instance without them
-  // gets the post's link in a new post, as the full app's "Quote with link".
+  // gets the post's link in a new post targeted at every logged-in
+  // account, as the full app's "Quote with link".
   const nativeQuote = supportsNativeQuote(instance);
   const quotePolicy = nativeQuote
     ? getQuotePolicy({
@@ -56,7 +57,7 @@ function ThreadPost({ statusID, instance, focused, nested, masto }) {
       showCompose({ quoteStatus: { ...status, _instance: instance } });
     } else {
       showCompose({
-        draftStatus: { status: `\n${status.url}`, _instance: instance },
+        draftStatus: { status: `\n${status.url}` },
       });
     }
   }
