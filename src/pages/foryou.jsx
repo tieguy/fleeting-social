@@ -313,7 +313,7 @@ function ForYou() {
   // "interesting" for the rule that picked the post. Status saves its like
   // and boost state in `states.statuses`; the composer saves its last post
   // in `states.lastPosted` (a quote arrives as `quoteContext`, the post
-  // that was quoted).
+  // that was quoted) and "Boost as @…" in `states.lastBoostedAs`.
   useEffect(() => {
     if (!shownItems.length) return;
     const baseline = new Map();
@@ -352,9 +352,19 @@ function ForYou() {
         if (item) count(item.key, item.rule, 'quote');
       }
     });
+    // "Boost as @…" never touches `states.statuses` (it boosts through
+    // another account's client), so the menu signals it separately
+    const unsubBoostedAs = subscribeKey(states, 'lastBoostedAs', (boosted) => {
+      if (!boosted?.id) return;
+      const item = itemsRef.current.find(
+        ({ key }) => splitKey(key).id === boosted.id,
+      );
+      if (item) count(item.key, item.rule, 'boost');
+    });
     return () => {
       unsubStatuses();
       unsubPosted();
+      unsubBoostedAs();
     };
   }, [shownItems]);
 

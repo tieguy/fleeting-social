@@ -118,10 +118,30 @@ function App() {
         standalone
         hasOpener={window.opener}
         onClose={(results) => {
-          const { newStatus, fn = () => {} } = results || {};
+          const {
+            newStatus,
+            type,
+            instance,
+            posted,
+            fn = () => {},
+          } = results || {};
           try {
-            if (newStatus) {
-              window.opener.__STATES__.reloadStatusPage++;
+            if (window.opener) {
+              if (newStatus || posted) {
+                // Read by the opener's For You page, which counts a reply
+                // or quote of a digest post for the rule that picked it
+                // (same shape Modals sets in the main window)
+                window.opener.__STATES__.lastPosted = {
+                  type,
+                  instance,
+                  newStatus,
+                  replyToStatus: replyToStatus || null,
+                  quoteContext: quoteContext || null,
+                };
+              }
+              if (newStatus) {
+                window.opener.__STATES__.reloadStatusPage++;
+              }
             }
             fn();
             setUIState('closed');

@@ -29,9 +29,9 @@ import MenuConfirm from './menu-confirm';
 
 const { DEV } = import.meta.env;
 
-// The boost/quote menu, shared by the status action bar (the rocket button)
-// and the status context menu's "Boost" submenu. Extracted from
-// status.jsx's two inline MenuConfirm blocks.
+// The boost/quote menu, shared by the status action bar (the rocket button),
+// the status context menu's "Boost" submenu, and the For You digest's action
+// row. Extracted from status.jsx's two inline MenuConfirm blocks.
 //
 // `children` is the trigger: the menu button when !subMenu, the submenu
 // label when subMenu. `showBoostAs={false}` omits the "Boost as @…" items
@@ -188,6 +188,10 @@ function BoostQuoteMenu({
     try {
       const { actingMasto, targetId } = await resolveStatusAs(account);
       await actingMasto.v1.statuses.$select(targetId).reblog();
+      // Read by the For You page: a boost through another account still
+      // counts for the rule that picked the post. `id`/`instance` are the
+      // ORIGINAL post's, matching how the digest keys its items.
+      states.lastBoostedAs = { id, instance };
       showToast(t`Boosted as @${acctName}`);
       return true;
     } catch (e) {

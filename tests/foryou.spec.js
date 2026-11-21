@@ -243,6 +243,41 @@ test('a quote with link counts as interesting for the rule', async ({
   expect(verdict.actions).toEqual(['quote']);
 });
 
+test('a quote still counts when the anchor account is unchecked', async ({
+  page,
+}) => {
+  await seedWithBsky(page);
+  await stubBluesky(page, []);
+  await page.goto('/#/foryou');
+  const firstItem = page.locator('.foryou-posts > li').first();
+  await expect(firstItem).toBeVisible();
+  await firstItem.getByRole('button', { name: 'Boost' }).click();
+  await page.getByRole('menuitem', { name: 'Quote with link' }).click();
+  const compose = page.locator('#compose-container');
+  await expect(compose).toBeVisible();
+
+  // Uncheck the anchor (current) account: only the Bluesky account posts,
+  // so no newStatus comes back — the verdict must record anyway
+  await compose
+    .locator('.cross-post-toolbar .account-picker-option', {
+      hasText: 'alice@instance-a.test',
+    })
+    .locator('input[type=checkbox]')
+    .uncheck();
+  await compose.locator('textarea').first().fill('check this out');
+  await compose.locator('button[type=submit]').click();
+
+  // The quote published through the checked account…
+  await expect.poll(() => bskyWrites.length).toBe(1);
+  // …and still counts for the rule
+  await expect
+    .poll(() => Object.values(service.state.verdicts))
+    .toHaveLength(1);
+  const [verdict] = Object.values(service.state.verdicts);
+  expect(verdict.verdict).toBe('interesting');
+  expect(verdict.actions).toEqual(['quote']);
+});
+
 test('Quote with link targets every account', async ({ page }) => {
   await seedWithBsky(page);
   await stubBluesky(page, []);
@@ -405,6 +440,7 @@ test('a Bluesky post with quotes turned off disables the quote item', async ({
 });
 
 test('Boost as a second same-network account', async ({ page }) => {
+  let bReblogs = 0;
   await seedAccounts(page, [ACCOUNT, ACCOUNT_B]);
   // B's server answers only the search that resolves the post and the
   // reblog itself; its other routes abort
@@ -414,10 +450,12 @@ test('Boost as a second same-network account', async ({ page }) => {
   );
   await page.route(
     'https://instance-b.test/api/v1/statuses/1/reblog',
-    (route) =>
-      route.fulfill({
+    (route) => {
+      bReblogs++;
+      return route.fulfill({
         json: { ...HOME[0], id: '1', reblogged: true, reblogs_count: 2 },
-      }),
+      });
+    },
   );
   await page.goto('/#/foryou');
   await openBoostMenu(page);
@@ -426,6 +464,66 @@ test('Boost as a second same-network account', async ({ page }) => {
     .getByRole('menuitem', { name: 'Boost as @bob@instance-b.test' })
     .click();
   await expect(page.getByText('Boosted as @bob@instance-b.test')).toBeVisible();
+
+  // B's server really took the reblog…
+  await expect.poll(() => bReblogs).toBe(1);
+  // …and the boost through the other account still counts for the rule
+  await expect
+    .poll(() => Object.values(service.state.verdicts))
+    .toHaveLength(1);
+  const [verdict] = Object.values(service.state.verdicts);
+  expect(verdict.verdict).toBe('interesting');
+  expect(verdict.actions).toEqual(['boost']);
+});
+
+// The pop-out button hides on touch devices (compose.jsx's
+// isPopOutNotSupported); pose as a desktop browser for this one
+test.describe('pop-out composer', () => {
+  test.use({
+    userAgent:
+      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  });
+
+  test('posting from the popped-out composer still records the verdict', async ({
+    page,
+  }) => {
+    let posted = 0;
+    // The pop-out is a new page, so the page-level routes from beforeEach
+    // do not cover it. Context-level routes serve the popup; the main
+    // page's own routes keep precedence for its requests.
+    const context = page.context();
+    await stubMastodon(context);
+    await context.route('https://instance-a.test/api/v1/statuses', (route) => {
+      if (route.request().method() !== 'POST') return route.continue();
+      posted++;
+      return route.fulfill({
+        json: { ...HOME[0], id: 'new1', content: '<p>look</p>' },
+      });
+    });
+    await seed(page);
+    await page.goto('/#/foryou');
+    const firstItem = page.locator('.foryou-posts > li').first();
+    await expect(firstItem).toBeVisible();
+    await firstItem.getByRole('button', { name: 'Boost' }).click();
+    await page.getByRole('menuitem', { name: 'Quote with link' }).click();
+    await expect(page.locator('#compose-container')).toBeVisible();
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.getByRole('button', { name: 'Pop out' }).click();
+    const popup = await popupPromise;
+    await popup.locator('textarea').first().fill('from the pop-out');
+    await popup.locator('button[type=submit]').click();
+
+    // The quote published from the popped-out window…
+    await expect.poll(() => posted).toBe(1);
+    // …and still counts for the rule
+    await expect
+      .poll(() => Object.values(service.state.verdicts))
+      .toHaveLength(1);
+    const [verdict] = Object.values(service.state.verdicts);
+    expect(verdict.verdict).toBe('interesting');
+    expect(verdict.actions).toEqual(['quote']);
+  });
 });
 
 test('"Not for me" shows the reasons', async ({ page }) => {

@@ -47,7 +47,7 @@ The facade deliberately over-loads some Mastodon concepts. `v1.statuses.$select(
 
 **Single publish path:** `src/utils/publish.js` — `publishThread({ account, segments, shared, ... })` is the unified entry point for posts, replies, threads, and cross-posts (it absorbed and replaced the old `bluesky/cross-post.js`). A single-segment thread is a post; multi-segment is a thread. `canCrossPost({ poll, scheduledAt, visibility })` is the sole eligibility predicate (no polls, no scheduling, no visibility beyond public/unlisted). Cross-post targets re-upload media from `mediaAttachments.fileData`; the primary post's own media is already uploaded by the composer, but segments 2+ of a primary thread also re-upload via `resolveMediaIds`.
 
-**Quotes are cross-targets too** (`composeTargetable` in `compose.jsx` covers quotes, like new posts; replies and edits stay network-bound). Every checked target posts exactly one quote, decided per target in the cross-target loop: a Bluesky quote is native on **every** Bluesky account (ids are network-global) and a link everywhere else; a Mastodon (API v7) quote is native only on accounts whose `instanceURL` is the quoted post's own instance — cross-instance Mastodon native quoting (search resolution) is out of scope, those targets get the link. Link targets carry the quoted post's URL appended to segment 0's text; the char counter counts only the typed text, so the appended URL can push such a target over its server limit, and the per-target failure toast reports that.
+**Quotes are cross-targets too** (`composeTargetable` in `compose.jsx` covers quotes, like new posts; replies and edits stay network-bound). Every checked target posts exactly one quote, decided per target in the cross-target loop: a Bluesky quote is native on **every** Bluesky account (ids are network-global) and a link everywhere else; a Mastodon (API v7) quote is native only on accounts whose `instanceURL` is the quoted post's own instance — cross-instance Mastodon native quoting (search resolution) is out of scope, those targets get the link. Link targets carry the quoted post's URL appended to segment 0's text (its `uri` when no web `url` exists); the char counter counts only the typed text, so the appended URL can push such a target over its server limit, and the per-target failure toast reports that. Quotes inherit the persisted `composeUncheckedAccounts` set like any targetable compose — a quote made with the anchor account unchecked publishes through the checked cross-targets alone, and `onClose` then reports only `posted` (no `newStatus`), so consumers like the For You verdict must key on that flag. With a checked Bluesky target the strictest-network cap (300) binds the counter, yet the URL append happens after counting — a quote aimed at both networks can pass the counter and still overflow on a link target.
 
 **Atomic Bluesky threads:** the facade's `masto.v1.statuses.createThread(paramsList)` (`src/utils/bluesky/client.js`) commits a whole thread in one `applyWrites` — all-or-nothing, so failure needs no resume bookkeeping (zero statuses, `failedAtIndex` = `startAt`). It builds each post's URI/CID client-side via `src/utils/bluesky/thread-writes.js` (`prepareForHashing`, `computeCid`, `nextTid`, `buildThreadWrites`; lazy-loaded) so later posts can reference earlier ones before the server replies. Silent-failure gotchas: `$type` must be set before hashing and undefined properties stripped, or the computed CID diverges from the server's; `nextTid()` chains from the previous TID so ordering holds **even for same-millisecond calls**; and `createdAt` advances +1ms per post because identical timestamps give undefined feed ordering (atproto issue #3027).
 
@@ -124,11 +124,19 @@ redirects it. It is in the nav menu and is a shortcut type.
   `src/components/service-unlock.jsx`; when the service does not answer,
   it shows an error and "Try again". There is no fallback to browser
   storage.
-- **Verdicts.** A like, boost or reply on a digest post counts as
+- **Verdicts.** A like, boost, reply or quote on a digest post counts as
   "interesting" for the rule that took it; "Not for me" counts against
   it. The page watches `states.statuses` for `favourited` and `reblogged`
-  changes, so the post's own menu counts too, and watches
-  `states.lastPosted`, which `Modals` sets when the composer posts. The
+  changes, so the post's own menu counts too; `states.lastPosted`, which
+  `Modals` sets when the composer posts (the popped-out composer window
+  sets it on its opener); and `states.lastBoostedAs`, which the shared
+  menu's "Boost as @…" sets because that boost goes through another
+  account's client and never touches `states.statuses`. A quote arrives
+  as `lastPosted.quoteContext` — the `_quoteContext` marker the menu puts
+  on its `showCompose` calls, the `_instance`-stamped quoted status —
+  rather than being read off `type`, because link quotes and
+  no-attribution quotes have no `quoteStatus` in the composer; only
+  native quotes set `type: 'quote'`. The
   digest has its own reply, boost and like row because the timeline's
   action bar shows only on hover; its boost button opens the shared
   boost/quote menu (`src/components/boost-quote-menu.jsx`) while reply
@@ -192,7 +200,7 @@ Two invariants, both load-bearing:
 - **No remote resources.** The avatar is a gray circle with a locally drawn emoji glyph, the name and handle are fixed explanatory text, post media is omitted, and custom emoji stay as `:shortcode:` text, so the canvas never loads a cross-origin image and never taints; `toBlob` keeps working and the strict CSP needs no allowance. A DOM screenshot (html2canvas and kin) fails on both counts, cross-origin images and the CSP, and is not used.
 - **No original-post identifiers.** Nothing derived from the original's URL, ID, handle, display name, avatar, or timestamp is drawn or attached, so the new post cannot be traced through the network and does not notify the author. @-mentions inside the body are kept verbatim by decision.
 
-On a post the user cannot boost (`!canBoost`), the action is unreachable on both surfaces. This is a code reading on 2026-09-10, not a browser observation. In the action bar, the rocket `StatusButton` is the menu trigger and carries `disabled={!canBoost}`, so the menu does not open. In the kebab, the Boost entry is a `SubMenu` that receives the same `disabled` prop, so its submenu does not open.
+On a post the user cannot boost (`!canBoost`), the action is unreachable on three surfaces. This is a code reading on 2026-09-10 (surfaces updated 2026-11-20), not a browser observation. In the action bar, the rocket `StatusButton` is the menu trigger and carries `disabled={!canBoost}`, so the menu does not open. In the kebab, the Boost entry is a `SubMenu` that receives the same `disabled` prop, so its submenu does not open. In the For You digest's action row, the rocket button wraps the same `BoostQuoteMenu`, whose confirm trigger gets `disabled={!canBoost}`, so the menu does not open there either.
 
 ## Conversation mode
 

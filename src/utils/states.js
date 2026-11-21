@@ -44,6 +44,9 @@ const states = proxy({
   },
   reloadScheduledPosts: 0,
   lastPosted: null, // { type, instance, newStatus, replyToStatus, quoteContext }
+  // Set by "Boost as @…" (boost-quote-menu.jsx); read by the For You page,
+  // which counts the boost for the rule that picked the post
+  lastBoostedAs: null, // { id, instance }
   spoilers: {},
   spoilersMedia: {},
   revealedQuotes: {},

@@ -88,7 +88,8 @@ export default function Modals({ conversationMode = false }) {
             }
             sharedData={window.__SHARED_DATA__ || null}
             onClose={(results) => {
-              const { newStatus, instance, type, scheduledAt } = results || {};
+              const { newStatus, instance, type, scheduledAt, posted } =
+                results || {};
               const replyToStatus =
                 typeof states.showCompose === 'object'
                   ? states.showCompose?.replyToStatus
@@ -100,9 +101,12 @@ export default function Modals({ conversationMode = false }) {
               states.showCompose = false;
               window.__COMPOSE__ = null;
               window.__SHARED_DATA__ = null;
-              if (newStatus) {
-                // Read by the For You page, which counts a reply to a
-                // digest post for the rule that picked it
+              if (newStatus || posted) {
+                // Read by the For You page, which counts a reply, quote or
+                // boost of a digest post for the rule that picked it.
+                // `posted` covers a publish with the anchor account
+                // unchecked, when only the cross-targets posted and
+                // newStatus is undefined.
                 states.lastPosted = {
                   type,
                   instance,
@@ -110,6 +114,8 @@ export default function Modals({ conversationMode = false }) {
                   replyToStatus,
                   quoteContext,
                 };
+              }
+              if (newStatus) {
                 states.reloadStatusPage++;
                 if (scheduledAt) states.reloadScheduledPosts++;
                 showToast({

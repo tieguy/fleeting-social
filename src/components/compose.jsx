@@ -1599,6 +1599,9 @@ function Compose({
                 // TODO: Note above is no longer true in Masto.js v6. Revisit this.
               */
                 let newStatus;
+                // Whether ANY account published (the anchor can be
+                // unchecked; cross-targets may post alone)
+                let crossPosted = false;
                 if (editStatus) {
                   let params = {
                     status,
@@ -1808,17 +1811,20 @@ function Compose({
                                 supportsNativeQuote(account.instanceURL)
                             : false;
                           // Link targets carry the quoted post's URL on
-                          // segment 0. The char counter counts only the
-                          // typed text, so the appended URL can push a link
-                          // target over its server limit — the per-target
-                          // failure toast reports that.
+                          // segment 0 (its uri when no web URL exists).
+                          // The char counter counts only the typed text, so
+                          // the appended URL can push a link target over its
+                          // server limit — the per-target failure toast
+                          // reports that.
+                          const quoteUrl =
+                            currentQuoteStatus?.url || currentQuoteStatus?.uri;
                           const targetSegments = nativeQuote
                             ? crossSegments
-                            : currentQuoteStatus?.url
+                            : quoteUrl
                               ? [
                                   {
                                     ...crossSegments[0],
-                                    text: `${crossSegments[0].text}\n${currentQuoteStatus.url}`,
+                                    text: `${crossSegments[0].text}\n${quoteUrl}`,
                                   },
                                   ...crossSegments.slice(1),
                                 ]
@@ -1849,6 +1855,11 @@ function Compose({
                               }
                             },
                           });
+                          if (crossStatuses.length > 0) {
+                            // Something reached a server, even on partial
+                            // failure — the verdict must not be lost
+                            crossPosted = true;
+                          }
                           if (crossFailedAt !== null) {
                             // Partial cross-post: report precisely what made it
                             // up. Single posts keep the original failure copy —
@@ -1904,6 +1915,9 @@ function Compose({
                         ? 'quote'
                         : 'post',
                   newStatus,
+                  // Whether anything posted, even with the anchor account
+                  // unchecked (then newStatus is undefined)
+                  posted: !!newStatus || crossPosted,
                   instance,
                   scheduledAt,
                 });
