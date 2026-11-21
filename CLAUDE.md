@@ -128,7 +128,9 @@ redirects it. It is in the nav menu and is a shortcut type.
   changes, so the post's own menu counts too, and watches
   `states.lastPosted`, which `Modals` sets when the composer posts. The
   digest has its own reply, boost and like row because the timeline's
-  action bar shows only on hover.
+  action bar shows only on hover; its boost button opens the shared
+  boost/quote menu (`src/components/boost-quote-menu.jsx`) while reply
+  and like act directly.
 - **Reasons.** `src/components/dislike-reasons.jsx` holds the "Not for
   me" reasons for both the page and the lab.
 
@@ -176,11 +178,11 @@ is `docs/design-plans/2026-11-05-deepthought-service.md`.
 
 ## Quote without attribution
 
-A quote action in both boost/quote menus (action bar and kebab, `src/components/status.jsx`), alongside the instance's native quote or link-quote item, shares a post's text as a PNG card with the author redacted, attached to a new post with alt text prefilled. Four modules under `src/utils/`:
+A quote action in the shared boost/quote menu (`src/components/boost-quote-menu.jsx`, opened from the status action bar, the status kebab's Boost submenu and the For You digest row), alongside the instance's native quote or link-quote item, shares a post's text as a PNG card with the author redacted, attached to a new post with alt text prefilled. Four modules under `src/utils/`:
 
 - `post-card-model.js` (pure) — `buildCardModel(status)` turns a Mastodon-shaped status (Bluesky posts already arrive in this shape) into card content: content warning, plain-text paragraphs via `getHTMLText`, an omitted-content note (`[2 images not shown]`, `[poll not shown]`, `[quoted post not shown]`, `[link preview not shown]`), and alt text capped at the composer's 1500-char `descriptionLimit`. Its test runs under `// @vitest-environment happy-dom` because `getHTMLText` needs a DOM.
 - `post-card-layout.js` (pure) — `layoutCard(model, measureText, opts)` wraps the content into positioned lines (word wrap, hard break for over-wide tokens, paragraph gaps, a line cap with a trailing `[…]` line). The header stands in for the author: a mask glyph (`AVATAR_GLYPH`) in the avatar circle, `HEADER_NAME` ("Anonymized post") where the display name goes, and `HEADER_HANDLE` ("Quoted without attribution to avoid pile-ons") where the handle goes. The measurer is injected so the layout is unit-tested in Node.
-- `post-card-render.js` (browser only, lazy-imported) — `renderCardBlob(status, opts)` draws the layout on a Canvas 2D surface at the device pixel ratio, floored at 2x, and resolves `{ blob, altText, truncated }`. The palette follows the app theme (`is-dark` / `is-light` on `<html>`, else the system preference); `opts.theme` overrides it. When `truncated` is set, the menu handler in `status.jsx` shows a toast after opening the composer. The card is `DEFAULT_WIDTH` (600px) wide; a caller-supplied `opts.width` is floored at `MIN_WIDTH` (240px).
+- `post-card-render.js` (browser only, lazy-imported) — `renderCardBlob(status, opts)` draws the layout on a Canvas 2D surface at the device pixel ratio, floored at 2x, and resolves `{ blob, altText, truncated }`. The palette follows the app theme (`is-dark` / `is-light` on `<html>`, else the system preference); `opts.theme` overrides it. When `truncated` is set, the menu handler shows a toast after opening the composer. The card is `DEFAULT_WIDTH` (600px) wide; a caller-supplied `opts.width` is floored at `MIN_WIDTH` (240px).
 - `post-card-attachment.js` — `blobToAttachment(blob, altText)` wraps that blob in the composer's attachment shape. The composer's existing `draftStatus` restore path attaches it.
 
 Two invariants, both load-bearing:

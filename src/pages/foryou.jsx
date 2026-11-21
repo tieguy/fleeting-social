@@ -7,6 +7,7 @@ import { InView } from 'react-intersection-observer';
 import { subscribe, useSnapshot } from 'valtio';
 import { subscribeKey } from 'valtio/utils';
 
+import BoostQuoteMenu from '../components/boost-quote-menu';
 import DislikeReasons from '../components/dislike-reasons';
 import FixedAccountsBanner from '../components/fixed-accounts-banner';
 import Icon from '../components/icon';
@@ -90,8 +91,9 @@ function ReasonLine({ reason }) {
 
 // Reply, boost and like, always visible, as in the conversation thread: the
 // timeline's own action bar shows only on hover, so a phone has none. The
-// page counts these actions for the rule that picked the post by watching
-// `states`, so the post's long-press menu counts too.
+// rocket opens the timeline's boost/quote menu (BoostQuoteMenu); reply and
+// like act directly. The page counts these actions for the rule that picked
+// the post by watching `states`, so the post's long-press menu counts too.
 function DigestActions({ statusID, instance, masto, verdict, onNotForMe }) {
   const { t } = useLingui();
   const snapStates = useSnapshot(states);
@@ -135,18 +137,16 @@ function DigestActions({ statusID, instance, masto, verdict, onNotForMe }) {
         <Icon icon="comment" alt={t`Reply`} />
         {repliesCount > 0 && <span>{shortenNumber(repliesCount)}</span>}
       </button>
-      <button
-        type="button"
-        class={`plain ${reblogged ? 'boosted' : ''}`}
-        disabled={busy}
-        aria-pressed={!!reblogged}
-        onClick={() =>
-          toggle('reblogged', 'reblogsCount', 'reblog', 'unreblog')
-        }
-      >
-        <Icon icon="rocket" alt={reblogged ? t`Unboost` : t`Boost`} />
-        {reblogsCount > 0 && <span>{shortenNumber(reblogsCount)}</span>}
-      </button>
+      <BoostQuoteMenu statusID={statusID} instance={instance}>
+        <button
+          type="button"
+          class={`plain ${reblogged ? 'boosted' : ''}`}
+          aria-pressed={!!reblogged}
+        >
+          <Icon icon="rocket" alt={reblogged ? t`Unboost` : t`Boost`} />
+          {reblogsCount > 0 && <span>{shortenNumber(reblogsCount)}</span>}
+        </button>
+      </BoostQuoteMenu>
       <button
         type="button"
         class={`plain foryou-like ${favourited ? 'liked' : ''}`}
