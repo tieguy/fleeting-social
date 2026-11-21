@@ -176,6 +176,7 @@ function Compose({
   editStatus,
   draftStatus,
   quoteStatus,
+  quoteContext,
   standalone,
   hasOpener,
   sharedData,
@@ -1216,6 +1217,7 @@ function Compose({
                         scheduledAt,
                       },
                       quoteStatus: currentQuoteStatus,
+                      quoteContext,
                     });
 
                     if (!newWin) {
@@ -1309,6 +1311,7 @@ function Compose({
                           scheduledAt,
                         },
                         quoteStatus: currentQuoteStatus,
+                        _quoteContext: quoteContext,
                       };
                       window.opener.__COMPOSE__ = passData; // Pass it here instead of `showCompose` due to some weird proxy issue again
                       if (window.opener.__STATES__.showCompose) {
@@ -1892,8 +1895,14 @@ function Compose({
 
                 // Close
                 onClose({
-                  // type: post, reply, edit
-                  type: editStatus ? 'edit' : replyToStatus ? 'reply' : 'post',
+                  // type: post, reply, quote, edit
+                  type: editStatus
+                    ? 'edit'
+                    : replyToStatus
+                      ? 'reply'
+                      : quoteStatus
+                        ? 'quote'
+                        : 'post',
                   newStatus,
                   instance,
                   scheduledAt,

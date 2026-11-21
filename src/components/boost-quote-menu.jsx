@@ -215,6 +215,7 @@ function BoostQuoteMenu({
           status: '',
           mediaAttachments: [attachment],
         },
+        _quoteContext: composeStatus(),
       });
       if (truncated) {
         showToast(t`This post is long, so the card shows only its beginning.`);
@@ -290,6 +291,7 @@ function BoostQuoteMenu({
               onClick={() => {
                 showCompose({
                   quoteStatus: composeStatus(),
+                  _quoteContext: composeStatus(),
                 });
               }}
             >
@@ -319,6 +321,7 @@ function BoostQuoteMenu({
                   draftStatus: {
                     status: `\n${url}`,
                   },
+                  _quoteContext: composeStatus(),
                 });
               }}
             >

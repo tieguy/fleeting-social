@@ -214,6 +214,35 @@ test('confirming Boost in the menu boosts and counts as interesting', async ({
   expect(verdict.rule).toBeTruthy();
 });
 
+test('a quote with link counts as interesting for the rule', async ({
+  page,
+}) => {
+  let posted = 0;
+  await page.route('https://instance-a.test/api/v1/statuses', (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    posted++;
+    return route.fulfill({
+      json: { ...HOME[0], id: 'new1', content: '<p>look</p>' },
+    });
+  });
+  await seed(page);
+  await page.goto('/#/foryou');
+  const firstItem = page.locator('.foryou-posts > li').first();
+  await expect(firstItem).toBeVisible();
+  await firstItem.getByRole('button', { name: 'Boost' }).click();
+  await page.getByRole('menuitem', { name: 'Quote with link' }).click();
+  await expect(page.locator('#compose-container')).toBeVisible();
+  await page.locator('#compose-container textarea').fill('look at this');
+  await page.getByRole('button', { name: 'Post', exact: true }).click();
+  await expect.poll(() => posted).toBe(1);
+  await expect
+    .poll(() => Object.values(service.state.verdicts))
+    .toHaveLength(1);
+  const [verdict] = Object.values(service.state.verdicts);
+  expect(verdict.verdict).toBe('interesting');
+  expect(verdict.actions).toEqual(['quote']);
+});
+
 test('Quote with link targets every account', async ({ page }) => {
   await seedWithBsky(page);
   await stubBluesky(page, []);

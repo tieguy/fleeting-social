@@ -81,6 +81,11 @@ export default function Modals({ conversationMode = false }) {
               window.__COMPOSE__?.quoteStatus ||
               null
             }
+            quoteContext={
+              states.showCompose?._quoteContext ||
+              window.__COMPOSE__?._quoteContext ||
+              null
+            }
             sharedData={window.__SHARED_DATA__ || null}
             onClose={(results) => {
               const { newStatus, instance, type, scheduledAt } = results || {};
@@ -88,6 +93,10 @@ export default function Modals({ conversationMode = false }) {
                 typeof states.showCompose === 'object'
                   ? states.showCompose?.replyToStatus
                   : window.__COMPOSE__?.replyToStatus;
+              const quoteContext =
+                states.showCompose?._quoteContext ||
+                window.__COMPOSE__?._quoteContext ||
+                null;
               states.showCompose = false;
               window.__COMPOSE__ = null;
               window.__SHARED_DATA__ = null;
@@ -99,19 +108,22 @@ export default function Modals({ conversationMode = false }) {
                   instance,
                   newStatus,
                   replyToStatus,
+                  quoteContext,
                 };
                 states.reloadStatusPage++;
                 if (scheduledAt) states.reloadScheduledPosts++;
                 showToast({
-                  text: {
-                    post: scheduledAt
-                      ? t`Post scheduled`
-                      : t`Post published. Check it out.`,
-                    reply: scheduledAt
-                      ? t`Reply scheduled`
-                      : t`Reply posted. Check it out.`,
-                    edit: t`Post updated. Check it out.`,
-                  }[type || 'post'],
+                  // 'quote' has no line of its own — it reuses the post's
+                  text:
+                    {
+                      post: scheduledAt
+                        ? t`Post scheduled`
+                        : t`Post published. Check it out.`,
+                      reply: scheduledAt
+                        ? t`Reply scheduled`
+                        : t`Reply posted. Check it out.`,
+                      edit: t`Post updated. Check it out.`,
+                    }[type || 'post'] || t`Post published. Check it out.`,
                   delay: 1000,
                   duration: 10_000, // 10 seconds
                   onClick: (toast) => {

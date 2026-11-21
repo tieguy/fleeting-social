@@ -309,10 +309,11 @@ function ForYou() {
     recordVerdict(key, { rule, verdict, action }).then(setStore, saveFailed);
   }
 
-  // Likes, boosts and replies made from the digest count as "interesting"
-  // for the rule that picked the post. Status saves its like and boost state
-  // in `states.statuses`; the composer saves its last post in
-  // `states.lastPosted`.
+  // Likes, boosts, replies and quotes made from the digest count as
+  // "interesting" for the rule that picked the post. Status saves its like
+  // and boost state in `states.statuses`; the composer saves its last post
+  // in `states.lastPosted` (a quote arrives as `quoteContext`, the post
+  // that was quoted).
   useEffect(() => {
     if (!shownItems.length) return;
     const baseline = new Map();
@@ -337,11 +338,19 @@ function ForYou() {
     });
     const unsubPosted = subscribeKey(states, 'lastPosted', (posted) => {
       const replyTo = posted?.replyToStatus;
-      if (posted?.type !== 'reply' || !replyTo?.id) return;
-      const item = itemsRef.current.find(
-        ({ key }) => splitKey(key).id === replyTo.id,
-      );
-      if (item) count(item.key, item.rule, 'reply');
+      if (posted?.type === 'reply' && replyTo?.id) {
+        const item = itemsRef.current.find(
+          ({ key }) => splitKey(key).id === replyTo.id,
+        );
+        if (item) count(item.key, item.rule, 'reply');
+      }
+      const quoted = posted?.quoteContext;
+      if (quoted?.id) {
+        const item = itemsRef.current.find(
+          ({ key }) => splitKey(key).id === quoted.id,
+        );
+        if (item) count(item.key, item.rule, 'quote');
+      }
     });
     return () => {
       unsubStatuses();

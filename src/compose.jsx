@@ -30,8 +30,14 @@ function App() {
   const [uiState, setUIState] = useState('default');
   const [isLoggedIn, setIsLoggedIn] = useState(null);
 
-  const { editStatus, replyToStatus, replyMode, draftStatus, quoteStatus } =
-    window.__COMPOSE__ || {};
+  const {
+    editStatus,
+    replyToStatus,
+    replyMode,
+    draftStatus,
+    quoteStatus,
+    quoteContext,
+  } = window.__COMPOSE__ || {};
 
   useTitle(
     editStatus
@@ -108,6 +114,7 @@ function App() {
         replyMode={replyMode || 'all'}
         draftStatus={draftStatus}
         quoteStatus={quoteStatus}
+        quoteContext={quoteContext}
         standalone
         hasOpener={window.opener}
         onClose={(results) => {

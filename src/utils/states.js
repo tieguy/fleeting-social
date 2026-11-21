@@ -43,7 +43,7 @@ const states = proxy({
     counter: 0,
   },
   reloadScheduledPosts: 0,
-  lastPosted: null, // { type, instance, newStatus, replyToStatus }
+  lastPosted: null, // { type, instance, newStatus, replyToStatus, quoteContext }
   spoilers: {},
   spoilersMedia: {},
   revealedQuotes: {},
