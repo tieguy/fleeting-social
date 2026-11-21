@@ -21,8 +21,8 @@ import { useHotkeys } from 'react-hotkeys-hook';
 import { useLongPress } from 'use-long-press';
 import { useSnapshot } from 'valtio';
 
-import { api, getPreferences } from '../utils/api';
 import { eligibleAccounts } from '../utils/acting-accounts';
+import { api, getPreferences } from '../utils/api';
 import { hasMultipleNetworks, isBlueskyInstance } from '../utils/bluesky';
 import { langDetector } from '../utils/browser-translator';
 import { useEditHistory } from '../utils/edit-history-context';
@@ -41,9 +41,9 @@ import pmem from '../utils/pmem';
 import {
   getPostQuoteApprovalPolicy,
   getQuotePolicy,
+  quoteMessages,
   supportsNativeQuote,
 } from '../utils/quote-utils';
-import RTF from '../utils/relative-time-format';
 import safeBoundingBoxPadding from '../utils/safe-bounding-box-padding';
 import shortenNumber from '../utils/shorten-number';
 import showCompose from '../utils/show-compose';
@@ -65,6 +65,7 @@ import visibilityIconsMap from '../utils/visibility-icons-map';
 import visibilityText from '../utils/visibility-text';
 
 import Avatar from './avatar';
+import BoostQuoteMenu from './boost-quote-menu';
 import CollectionCard from './collection-card';
 import CustomEmoji from './custom-emoji';
 import EmojiText from './emoji-text';
@@ -299,14 +300,6 @@ const checkDifferentLanguage = (
   return different;
 };
 
-export const quoteMessages = {
-  quotePrivate: msg`Private posts cannot be quoted`,
-  requestQuote: msg`Request to quote`,
-  quoteManualReview: msg`Author will manually review`,
-  quoteFollowersOnly: msg`Only followers can quote this post`,
-  quoteCannot: msg`You are not allowed to quote this post`,
-};
-
 const quoteApprovalPolicyMessages = {
   public: msg`Anyone can quote`,
   followers: msg`Your followers can quote`,
@@ -314,8 +307,6 @@ const quoteApprovalPolicyMessages = {
 };
 
 const QUESTION_REGEX = /[??？︖❓❔⁇⁈⁉¿‽؟]/;
-
-const { DEV } = import.meta.env;
 
 function Status({
   statusID,
@@ -344,8 +335,7 @@ function Status({
   showQuoteCount: forceShowQuoteCount,
   ghost,
 }) {
-  const { _, t, i18n } = useLingui();
-  const rtf = RTF(i18n.locale);
+  const { _, t } = useLingui();
 
   if (ghost) {
     const { inReplyToAccountId } = ghost;
@@ -747,39 +737,6 @@ function Status({
   const [showQuoteSettings, setShowQuoteSettings] = useState(false);
   const [showQuotes, setShowQuotes] = useState(false);
   const [showQuoteChain, setShowQuoteChain] = useState(false);
-  const [renderingCard, setRenderingCard] = useState(false);
-
-  // "Quote without attribution": render the post as a redacted PNG card and
-  // open the composer with it attached. Nothing that identifies the original
-  // (URL, ID, handle, name, avatar, time) reaches the new post.
-  const quoteWithoutAttribution = async () => {
-    if (renderingCard) return;
-    setRenderingCard(true);
-    try {
-      const [{ renderCardBlob }, { blobToAttachment }] = await Promise.all([
-        import('../utils/post-card-render'),
-        import('../utils/post-card-attachment'),
-      ]);
-      const { blob, altText, truncated } = await renderCardBlob(status);
-      const attachment = await blobToAttachment(blob, altText);
-      showCompose({
-        draftStatus: {
-          status: '',
-          mediaAttachments: [attachment],
-        },
-      });
-      if (truncated) {
-        showToast(
-          t`This post is long, so the card shows only its beginning.`,
-        );
-      }
-    } catch (e) {
-      console.error(e);
-      showToast(t`Could not render the post`);
-    } finally {
-      setRenderingCard(false);
-    }
-  };
 
   const spoilerContentRef = useTruncated();
   const contentRef = useTruncated();
@@ -860,19 +817,6 @@ function Status({
       replyMode,
     });
   };
-
-  // Check if media has no descriptions
-  const mediaNoDesc = useMemo(() => {
-    return mediaAttachments.some(
-      (attachment) => !attachment.description?.trim?.(),
-    );
-  }, [mediaAttachments]);
-
-  const statusMonthsAgo = useMemo(() => {
-    return Math.floor(
-      (new Date() - createdAtDate) / (1000 * 60 * 60 * 24 * 30),
-    );
-  }, [createdAtDate]);
 
   // const boostStatus = async () => {
   //   if (!sameInstance || !authenticated) {
@@ -971,20 +915,6 @@ function Status({
       }
     }
     return { actingMasto, actingInstance, targetId };
-  };
-
-  const boostStatusAs = async (account) => {
-    const acctName = account.info.acct || account.info.username;
-    try {
-      const { actingMasto, targetId } = await resolveStatusAs(account);
-      await actingMasto.v1.statuses.$select(targetId).reblog();
-      showToast(t`Boosted as @${acctName}`);
-      return true;
-    } catch (e) {
-      console.error(e);
-      showToast(t`Unable to boost as @${acctName}: ${e?.message || e}`);
-      return false;
-    }
   };
 
   const favouriteStatusAs = async (account) => {
@@ -1198,25 +1128,6 @@ function Status({
 
   const actionsRef = useRef();
   const isPinnable = ['public', 'unlisted', 'private'].includes(visibility);
-  const menuFooter =
-    mediaNoDesc && !reblogged ? (
-      <div class="footer">
-        <Icon icon="alert" />
-        <Trans>Some media have no descriptions.</Trans>
-      </div>
-    ) : (
-      statusMonthsAgo >= 3 && (
-        <div class="footer">
-          <Icon icon="info" />
-          <span>
-            <Trans>
-              Old post (<strong>{rtf.format(-statusMonthsAgo, 'month')}</strong>
-              )
-            </Trans>
-          </span>
-        </div>
-      )
-    );
   const mentionsCount = useMemo(() => {
     if (!mentions?.length) return false;
     const allMentions = new Set([accountId, ...mentions.map((m) => m.id)]);
@@ -1320,99 +1231,7 @@ function Status({
                 <ReplyMenuContent />
               </MenuItem>
             )}
-            <MenuConfirm
-              subMenu
-              confirmLabel={
-                <>
-                  <Icon icon="rocket" />
-                  <span>{reblogged ? t`Unboost` : t`Boost`}</span>
-                </>
-              }
-              className={`menu-reblog ${reblogged ? 'checked' : ''}`}
-              menuExtras={
-                <>
-                  {supportsNativeQuote(instance) && (
-                    <MenuItem
-                      disabled={quoteDisabled}
-                      onClick={() => {
-                        showCompose({
-                          quoteStatus: composeStatus(),
-                        });
-                      }}
-                    >
-                      <Icon icon="quote" />
-                      {quoteMetaText ? (
-                        <small>
-                          {quoteText}
-                          <br />
-                          {quoteMetaText}
-                        </small>
-                      ) : (
-                        <span>{quoteText}</span>
-                      )}
-                    </MenuItem>
-                  )}
-                  {(DEV || !supportsNativeQuote(instance)) && (
-                    <MenuItem
-                      onClick={() => {
-                        showCompose({
-                          draftStatus: {
-                            status: `\n${url}`,
-                          },
-                        });
-                      }}
-                    >
-                      <Icon icon="quote" />
-                      <span>
-                        <Trans>Quote with link</Trans>
-                      </span>
-                      {supportsNativeQuote(instance) && DEV && (
-                        <small class="tag collapsed">DEV</small>
-                      )}
-                    </MenuItem>
-                  )}
-                  <MenuItem
-                    disabled={renderingCard}
-                    onClick={quoteWithoutAttribution}
-                  >
-                    <Icon icon="quote" />
-                    <span>
-                      <Trans>Quote without attribution</Trans>
-                    </span>
-                  </MenuItem>
-                  {boostAsAccounts.map((account) => {
-                    const acctName = account.info.acct || account.info.username;
-                    return (
-                      <MenuItem
-                        key={account.info.id}
-                        onClick={async () => {
-                          haptics.trigger('light');
-                          await boostStatusAs(account);
-                        }}
-                      >
-                        <Icon icon="rocket" />
-                        <span>{t`Boost as @${acctName}`}</span>
-                      </MenuItem>
-                    );
-                  })}
-                </>
-              }
-              menuFooter={menuFooter}
-              disabled={!canBoost}
-              onClick={async () => {
-                haptics.trigger('light');
-                try {
-                  const done = await confirmBoostStatus();
-                  if (!isSizeLarge && done) {
-                    showToast(
-                      reblogged
-                        ? t`Unboosted @${username || acct}'s post`
-                        : t`Boosted @${username || acct}'s post`,
-                    );
-                  }
-                } catch (e) {}
-              }}
-            >
+            <BoostQuoteMenu subMenu statusID={id} instance={instance}>
               {canQuote ? (
                 <span class="icon">
                   <Icon icon="rocket" />
@@ -1432,7 +1251,7 @@ function Status({
                       ? t`Boost/Quote…`
                       : t`Boost…`}
               </span>
-            </MenuConfirm>
+            </BoostQuoteMenu>
             <MenuItem
               onClick={favouriteStatusNotify}
               className={`menu-favourite ${favourited ? 'checked' : ''}`}
@@ -3212,84 +3031,10 @@ function Status({
                 <div
                   class={`action ${canQuote && reblogsCount > 0 && quotesCount > 0 ? 'has-counts' : 'has-count'}`}
                 >
-                  <MenuConfirm
-                    disabled={!canBoost}
-                    onClick={() => {
-                      haptics.trigger('light');
-                      return confirmBoostStatus();
-                    }}
-                    confirmLabel={
-                      <>
-                        <Icon icon="rocket" />
-                        <span class="menu-grow">
-                          {reblogged ? t`Unboost` : t`Boost`}
-                        </span>
-                        {reblogsCount > 0 && (
-                          <small class="more-insignificant">
-                            {shortenNumber(reblogsCount)}
-                          </small>
-                        )}
-                      </>
-                    }
-                    menuExtras={
-                      <>
-                        {supportsNativeQuote(instance) && (
-                          <MenuItem
-                            disabled={quoteDisabled}
-                            onClick={() => {
-                              showCompose({
-                                quoteStatus: composeStatus(),
-                              });
-                            }}
-                          >
-                            <Icon icon="quote" />
-                            {quoteMetaText ? (
-                              <small>
-                                {quoteText}
-                                <br />
-                                {quoteMetaText}
-                              </small>
-                            ) : (
-                              <span class="menu-grow">{quoteText}</span>
-                            )}
-                            {quotesCount > 0 && (
-                              <small class="more-insignificant">
-                                {shortenNumber(quotesCount)}
-                              </small>
-                            )}
-                          </MenuItem>
-                        )}
-                        {(DEV || !supportsNativeQuote(instance)) && (
-                          <MenuItem
-                            onClick={() => {
-                              showCompose({
-                                draftStatus: {
-                                  status: `\n${url}`,
-                                },
-                              });
-                            }}
-                          >
-                            <Icon icon="quote" />
-                            <span>
-                              <Trans>Quote with link</Trans>
-                            </span>
-                            {supportsNativeQuote(instance) && DEV && (
-                              <small class="tag collapsed">DEV</small>
-                            )}
-                          </MenuItem>
-                        )}
-                        <MenuItem
-                          disabled={renderingCard}
-                          onClick={quoteWithoutAttribution}
-                        >
-                          <Icon icon="quote" />
-                          <span>
-                            <Trans>Quote without attribution</Trans>
-                          </span>
-                        </MenuItem>
-                      </>
-                    }
-                    menuFooter={menuFooter}
+                  <BoostQuoteMenu
+                    showBoostAs={false}
+                    statusID={id}
+                    instance={instance}
                   >
                     <StatusButton
                       checked={reblogged}
@@ -3309,7 +3054,7 @@ function Status({
                       // onClick={boostStatus}
                       disabled={!canBoost}
                     />
-                  </MenuConfirm>
+                  </BoostQuoteMenu>
                 </div>
                 <div class="action has-count">
                   <StatusButton

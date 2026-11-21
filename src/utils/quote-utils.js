@@ -1,5 +1,17 @@
+import { msg } from '@lingui/core/macro';
+
 import { isBlueskyInstance } from './bluesky';
 import { getAPIVersions, getCurrentInstance } from './store-utils';
+
+// Menu/hotkey wording for each reason a native quote can be unavailable,
+// keyed by getQuotePolicy's `reason` values (plus the request-quote pair).
+export const quoteMessages = {
+  quotePrivate: msg`Private posts cannot be quoted`,
+  requestQuote: msg`Request to quote`,
+  quoteManualReview: msg`Author will manually review`,
+  quoteFollowersOnly: msg`Only followers can quote this post`,
+  quoteCannot: msg`You are not allowed to quote this post`,
+};
 
 // Quotes are native on Bluesky; on Mastodon they need API version 7+.
 // Pass the post's/target's instance for cross-account correctness —

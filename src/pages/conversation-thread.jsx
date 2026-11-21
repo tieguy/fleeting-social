@@ -9,10 +9,14 @@ import Icon from '../components/icon';
 import InertLinks from '../components/inert-links';
 import Link from '../components/link';
 import Loader from '../components/loader';
-import Status, { quoteMessages } from '../components/status';
+import Status from '../components/status';
 import { api } from '../utils/api';
 import { nestRows, threadRows } from '../utils/conversation-tree';
-import { getQuotePolicy, supportsNativeQuote } from '../utils/quote-utils';
+import {
+  getQuotePolicy,
+  quoteMessages,
+  supportsNativeQuote,
+} from '../utils/quote-utils';
 import shortenNumber from '../utils/shorten-number';
 import showCompose from '../utils/show-compose';
 import showToast from '../utils/show-toast';

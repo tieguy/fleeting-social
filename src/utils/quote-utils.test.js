@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// The catalog messages now live here, defined with the lingui `msg` macro.
+// Vitest runs without the macro transform, so the macro import is stubbed:
+// these tests are about the capability checks, not the strings.
+vi.mock('@lingui/core/macro', () => ({
+  msg: (strings, ...values) =>
+    strings.raw.reduce((acc, s, i) => acc + s + (values[i] ?? ''), ''),
+}));
+
 // Both dependencies reach into the account store / localStorage, so they are
 // stubbed: these tests are about which instance the capability check reads.
 vi.mock('./bluesky', () => ({
